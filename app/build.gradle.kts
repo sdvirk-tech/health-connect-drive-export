@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "ru.sdvirk.healthsync"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "ru.sdvirk.healthsync"
