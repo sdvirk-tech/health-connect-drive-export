@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Health Sync</string>
+    <string name="tip_samsung">В Samsung Health: Настройки → Health Connect → разреши те же типы данных (пульс, сон, HRV, SpO₂, давление, вес).</string>
+    <string name="export_now">Выгрузить сейчас</string>
+    <string name="daily_sync">Автораз в сутки</string>
+    <string name="request_permissions">Запросить разрешения Health Connect</string>
+</resources>
