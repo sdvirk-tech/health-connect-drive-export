@@ -2,6 +2,7 @@ package ru.sdvirk.healthsync.health
 
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABLE
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.BloodPressureRecord
 import androidx.health.connect.client.records.DistanceRecord
@@ -9,6 +10,7 @@ import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
+import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
@@ -16,6 +18,7 @@ import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.Instant
+import kotlin.reflect.KClass
 
 /**
  * Читает данные из Health Connect (куда Samsung Health пишет при включённой синхронизации).
@@ -24,9 +27,13 @@ import java.time.Instant
 class HealthConnectReader(private val context: Context) {
 
     val client: HealthConnectClient?
-        get() = try {
-            HealthConnectClient.getOrCreate(context)
-        } catch (_: Exception) {
+        get() = if (availability() == SDK_AVAILABLE) {
+            try {
+                HealthConnectClient.getOrCreate(context)
+            } catch (_: Exception) {
+                null
+            }
+        } else {
             null
         }
 
@@ -41,19 +48,32 @@ class HealthConnectReader(private val context: Context) {
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(DistanceRecord::class),
         HealthPermission.getReadPermission(ExerciseSessionRecord::class),
+        HealthPermission.PERMISSION_READ_HEALTH_DATA_IN_BACKGROUND,
+        HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY,
     )
 
-    suspend fun availability(): Int =
-        HealthConnectClient.getSdkStatus(context)
+    fun availability(): Int = HealthConnectClient.getSdkStatus(context)
 
     suspend fun readSince(start: Instant, end: Instant = Instant.now()): HealthSnapshot {
         val hc = client ?: return HealthSnapshot.empty()
         val range = TimeRangeFilter.between(start, end)
 
-        suspend fun <T : androidx.health.connect.client.records.Record> read(
-            clazz: kotlin.reflect.KClass<T>
-        ): List<T> = try {
-            hc.readRecords(ReadRecordsRequest(clazz, timeRangeFilter = range)).records
+        suspend fun <T : Record> read(clazz: KClass<T>): List<T> = try {
+            val all = mutableListOf<T>()
+            var pageToken: String? = null
+            do {
+                val page = hc.readRecords(
+                    ReadRecordsRequest(
+                        recordType = clazz,
+                        timeRangeFilter = range,
+                        pageSize = 1000,
+                        pageToken = pageToken,
+                    )
+                )
+                all += page.records
+                pageToken = page.pageToken
+            } while (pageToken != null)
+            all
         } catch (_: Exception) {
             emptyList()
         }
