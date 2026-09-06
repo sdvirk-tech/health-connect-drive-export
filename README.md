@@ -24,8 +24,8 @@ Package / `applicationId`: `ru.sdvirk.healthsync`
 
 ### Android Studio
 
-1. Открой корень репозитория в Android Studio (Ladybug / Meerkat+).
-2. Дождись Sync Gradle (wrapper уже в репозитории, Gradle 8.11.1).
+1. Открой корень репозитория в Android Studio (2025.1+; нужен AGP 8.9).
+2. Дождись Sync Gradle (wrapper уже в репозитории: Gradle 8.11.1, compileSdk 36).
 3. **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
 4. APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
