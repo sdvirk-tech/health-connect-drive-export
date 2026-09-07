@@ -78,7 +78,10 @@ class GoogleDriveAuth(
         val account = email?.takeIf { it.isNotBlank() } ?: "Google"
         saveSession(activity, account)
 
-        DriveUploader(accessToken = token).verifyFolder().getOrElse { err ->
+        DriveUploader(
+            accessToken = token,
+            folderId = DriveConfig.requireConfiguredFolderId(activity),
+        ).verifyFolder().getOrElse { err ->
             throw IllegalStateException(
                 "Вход: $account. Папка Drive недоступна: ${err.message}. " +
                     "Войди аккаунтом, у которого есть доступ к папке.",

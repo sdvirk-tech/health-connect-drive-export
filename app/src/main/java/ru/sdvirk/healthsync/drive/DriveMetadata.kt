@@ -7,7 +7,7 @@ internal object DriveMetadata {
 
     fun createFileJson(
         fileName: String,
-        folderId: String = DriveConfig.FOLDER_ID,
+        folderId: String = DriveConfig.FOLDER_ID_PLACEHOLDER,
         mimeType: String = DriveConfig.MIME_ZIP,
     ): String {
         val nameValue = AppsScriptPayload.toJsonObject(mapOf("name" to fileName))

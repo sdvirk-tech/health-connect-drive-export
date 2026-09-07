@@ -4,6 +4,18 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+fun driveFolderIdBuildConfig(): String {
+    val props = java.util.Properties()
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) {
+        localFile.inputStream().use { props.load(it) }
+    }
+    val raw = props.getProperty("drive.folder.id")?.trim().orEmpty()
+        .ifEmpty { "YOUR_DRIVE_FOLDER_ID" }
+    val escaped = raw.replace("\\", "\\\\").replace("\"", "\\\"")
+    return "\"$escaped\""
+}
+
 android {
     namespace = "ru.sdvirk.healthsync"
     compileSdk = 36
@@ -14,6 +26,7 @@ android {
         targetSdk = 35
         versionCode = 2
         versionName = "0.2.0"
+        buildConfigField("String", "DRIVE_FOLDER_ID", driveFolderIdBuildConfig())
     }
 
     buildTypes {
@@ -30,7 +43,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
 }
 

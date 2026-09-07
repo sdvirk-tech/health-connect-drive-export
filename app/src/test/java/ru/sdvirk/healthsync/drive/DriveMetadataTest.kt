@@ -7,20 +7,23 @@ import org.junit.Test
 class DriveMetadataTest {
 
     @Test
-    fun folderIdUnchanged() {
-        assertEquals("10pwzTmlxVLAshc7_DfOuecSktde-HKjw", DriveConfig.FOLDER_ID)
+    fun folderIdDefaultIsPlaceholder() {
+        assertEquals("YOUR_DRIVE_FOLDER_ID", DriveConfig.FOLDER_ID_PLACEHOLDER)
     }
 
     @Test
     fun createFileJsonUsesParentsAndUniqueName() {
-        val json = DriveMetadata.createFileJson("health_export_2026-09-07_1200.zip")
+        val json = DriveMetadata.createFileJson(
+            "health_export_2026-09-07_1200.zip",
+            folderId = DriveConfig.FOLDER_ID_PLACEHOLDER,
+        )
         assertEquals(
             "{\"name\":\"health_export_2026-09-07_1200.zip\"," +
                 "\"mimeType\":\"application/zip\"," +
-                "\"parents\":[\"10pwzTmlxVLAshc7_DfOuecSktde-HKjw\"]}",
+                "\"parents\":[\"YOUR_DRIVE_FOLDER_ID\"]}",
             json
         )
-        assertTrue(json.contains("\"parents\":[\"10pwzTmlxVLAshc7_DfOuecSktde-HKjw\"]"))
+        assertTrue(json.contains("\"parents\":[\"YOUR_DRIVE_FOLDER_ID\"]"))
     }
 
     @Test

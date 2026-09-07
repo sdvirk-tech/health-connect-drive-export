@@ -130,9 +130,11 @@ Redirect URI можно не задавать. Скопируй **Client ID** (`
 
 ## Drive-папка
 
-https://drive.google.com/drive/folders/10pwzTmlxVLAshc7_DfOuecSktde-HKjw
+Укажи ID своей папки Drive (`YOUR_DRIVE_FOLDER_ID`), не коммить личный id:
 
-Id папки в коде не меняется: `10pwzTmlxVLAshc7_DfOuecSktde-HKjw`.
+- предпочтительно `local.properties`: `drive.folder.id=YOUR_DRIVE_FOLDER_ID` (файл уже в `.gitignore`)
+- либо локальный `app/src/main/res/values/drive_folder.xml` (скопируй `drive_folder.example.xml` и не оставляй оба файла в `res/values/` — одинаковое имя ресурса)
+
 
 ## Fallback: Apps Script
 

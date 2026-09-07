@@ -5,6 +5,7 @@ import androidx.health.connect.client.HealthConnectClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import ru.sdvirk.healthsync.R
+import ru.sdvirk.healthsync.drive.DriveConfig
 import ru.sdvirk.healthsync.drive.DriveUploader
 import ru.sdvirk.healthsync.drive.GoogleDriveAuth
 import ru.sdvirk.healthsync.health.HealthConnectReader
@@ -52,11 +53,17 @@ class HealthExport(private val context: Context) {
             return Outcome(snap.summaryLines().joinToString(" · "), out, fileName, upload = null)
         }
 
+        val folderId = if (!token.isNullOrBlank()) {
+            DriveConfig.requireConfiguredFolderId(context)
+        } else {
+            DriveConfig.folderId(context)
+        }
         val upload = withContext(Dispatchers.IO) {
             DriveUploader(
                 uploadUrl = url,
                 sharedSecret = secret,
                 accessToken = token,
+                folderId = folderId,
             ).upload(out, fileName)
         }
         return Outcome(snap.summaryLines().joinToString(" · "), out, fileName, upload)

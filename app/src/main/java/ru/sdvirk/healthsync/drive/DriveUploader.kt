@@ -20,7 +20,7 @@ class DriveUploader(
     private val uploadUrl: String = "",
     private val sharedSecret: String = "",
     private val accessToken: String? = null,
-    private val folderId: String = DriveConfig.FOLDER_ID,
+    private val folderId: String = DriveConfig.FOLDER_ID_PLACEHOLDER,
 ) {
     private val appsScriptClient = OkHttpClient.Builder()
         .followRedirects(false)
