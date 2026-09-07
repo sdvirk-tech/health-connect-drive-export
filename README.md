@@ -75,7 +75,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Drive-папка
 
-https://drive.google.com/drive/folders/10pwzTmlxVLAshc7_DfOuecSktde-HKjw
+Укажи ID своей папки Drive (`YOUR_DRIVE_FOLDER_ID`) — в Apps Script (`FOLDER_ID` в [`docs/apps-script-upload.md`](docs/apps-script-upload.md)) или в локальном `app/src/main/res/values/drive_folder.xml` (скопируй `drive_folder.example.xml`; файл в `.gitignore`). Личный folder id в репозиторий не коммить.
 
 ## Статус
 
