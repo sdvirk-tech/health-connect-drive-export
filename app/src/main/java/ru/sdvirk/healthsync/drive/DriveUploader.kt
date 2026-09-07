@@ -13,16 +13,26 @@ import java.util.concurrent.TimeUnit
 /**
  * Загрузка zip в папку Google Drive.
  *
- * По умолчанию — JSON + base64 для Apps Script Web App (multipart там почти не работает).
- * Для своего backend можно вызвать [uploadMultipart].
+ * Основной путь — Drive REST API с OAuth access token.
+ * Apps Script Web App остаётся опциональным fallback (POST после 302 часто даёт HTTP 405).
  */
 class DriveUploader(
-    private val uploadUrl: String,
+    private val uploadUrl: String = "",
     private val sharedSecret: String = "",
+    private val accessToken: String? = null,
+    private val folderId: String = DriveConfig.FOLDER_ID,
 ) {
-    private val client = OkHttpClient.Builder()
+    private val appsScriptClient = OkHttpClient.Builder()
         .followRedirects(false)
         .followSslRedirects(false)
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(180, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .build()
+
+    private val driveClient = OkHttpClient.Builder()
+        .followRedirects(true)
+        .followSslRedirects(true)
         .connectTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(180, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
@@ -31,14 +41,76 @@ class DriveUploader(
     fun upload(
         file: File,
         fileName: String = file.name,
-        mode: Mode = Mode.APPS_SCRIPT_JSON,
+        mode: Mode = Mode.AUTO,
     ): Result<String> = when (mode) {
+        Mode.AUTO -> when {
+            !accessToken.isNullOrBlank() -> uploadDriveApi(file, fileName)
+            else -> uploadAppsScriptJson(file, fileName)
+        }
+        Mode.DRIVE_API -> uploadDriveApi(file, fileName)
         Mode.APPS_SCRIPT_JSON -> uploadAppsScriptJson(file, fileName)
         Mode.MULTIPART -> uploadMultipart(file, fileName)
     }
 
+    fun verifyFolder(): Result<String> = runCatching {
+        val token = accessToken?.takeIf { it.isNotBlank() }
+            ?: error("Нет OAuth access token")
+        val url = DriveConfig.FILE_GET_URL + folderId + "?fields=id,name&supportsAllDrives=true"
+        val request = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $token")
+            .get()
+            .build()
+        driveClient.newCall(request).execute().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                error("Папка Drive HTTP ${response.code}: ${text.take(400)}")
+            }
+            val name = DriveMetadata.jsonStringField(text, "name") ?: folderId
+            name
+        }
+    }
+
+    fun uploadDriveApi(file: File, fileName: String = file.name): Result<String> = runCatching {
+        val token = accessToken?.takeIf { it.isNotBlank() }
+            ?: error("Войди в Google, чтобы загрузить в Drive")
+        require(file.exists() && file.length() > 0L) { "Zip пустой или не найден: ${file.absolutePath}" }
+
+        val meta = DriveMetadata.createFileJson(fileName, folderId)
+        val init = Request.Builder()
+            .url(DriveConfig.UPLOAD_URL)
+            .header("Authorization", "Bearer $token")
+            .header("X-Upload-Content-Type", DriveConfig.MIME_ZIP)
+            .header("X-Upload-Content-Length", file.length().toString())
+            .post(meta.toRequestBody(JSON_MEDIA))
+            .build()
+
+        val sessionUrl = driveClient.newCall(init).execute().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                error("Drive API HTTP ${response.code}: ${text.take(500)}")
+            }
+            response.header("Location")
+                ?: error("Drive API: нет Location для resumable upload")
+        }
+
+        val put = Request.Builder()
+            .url(sessionUrl)
+            .header("Authorization", "Bearer $token")
+            .put(file.asRequestBody(ZIP_MEDIA))
+            .build()
+
+        driveClient.newCall(put).execute().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                error("Drive API HTTP ${response.code}: ${text.take(500)}")
+            }
+            DriveMetadata.summarizeUpload(text.ifBlank { "ok" })
+        }
+    }
+
     fun uploadAppsScriptJson(file: File, fileName: String = file.name): Result<String> = runCatching {
-        require(uploadUrl.isNotBlank()) { "Задай Upload URL (Apps Script Web App)" }
+        require(uploadUrl.isNotBlank()) { "Задай Upload URL (Apps Script Web App) или войди в Google" }
         require(file.exists() && file.length() > 0L) { "Zip пустой или не найден: ${file.absolutePath}" }
 
         val json = AppsScriptPayload.encode(
@@ -64,7 +136,7 @@ class DriveUploader(
             .addFormDataPart(
                 "file",
                 fileName,
-                file.asRequestBody("application/zip".toMediaType())
+                file.asRequestBody(ZIP_MEDIA)
             )
             .apply {
                 if (sharedSecret.isNotBlank()) addFormDataPart("secret", sharedSecret)
@@ -78,12 +150,13 @@ class DriveUploader(
     /**
      * Apps Script отвечает 302 на script.googleusercontent.com.
      * OkHttp по умолчанию превращает POST в GET и теряет тело — doPost не вызывается.
+     * Даже с сохранением POST финальный /macros/echo часто отвечает 405 — поэтому основной путь это Drive API.
      */
     private fun executeKeepingPostOnRedirect(request: Request): String {
         var current = request
         var hops = 0
         while (true) {
-            client.newCall(current).execute().use { response ->
+            appsScriptClient.newCall(current).execute().use { response ->
                 if (response.isRedirect && hops < MAX_REDIRECTS) {
                     val location = response.header("Location")
                         ?: error("HTTP ${response.code}: redirect без Location")
@@ -116,10 +189,11 @@ class DriveUploader(
         return text.ifBlank { "ok" }
     }
 
-    enum class Mode { APPS_SCRIPT_JSON, MULTIPART }
+    enum class Mode { AUTO, DRIVE_API, APPS_SCRIPT_JSON, MULTIPART }
 
     private companion object {
         val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
+        val ZIP_MEDIA = DriveConfig.MIME_ZIP.toMediaType()
         const val MAX_REDIRECTS = 8
     }
 }

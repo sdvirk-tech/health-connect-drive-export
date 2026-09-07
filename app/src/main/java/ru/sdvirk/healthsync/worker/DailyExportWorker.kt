@@ -8,13 +8,8 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import ru.sdvirk.healthsync.drive.DriveUploader
-import ru.sdvirk.healthsync.export.ExportFileNames
-import ru.sdvirk.healthsync.export.JsonExporter
-import ru.sdvirk.healthsync.health.HealthConnectReader
-import java.io.File
-import java.time.Instant
-import java.time.temporal.ChronoUnit
+import ru.sdvirk.healthsync.drive.GoogleDriveAuth
+import ru.sdvirk.healthsync.export.HealthExport
 import java.util.concurrent.TimeUnit
 
 class DailyExportWorker(
@@ -25,25 +20,22 @@ class DailyExportWorker(
     override suspend fun doWork(): Result {
         val prefs = applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val uploadUrl = prefs.getString(KEY_UPLOAD_URL, "") ?: ""
-        if (uploadUrl.isBlank()) return Result.failure()
+        if (!GoogleDriveAuth.isAuthorized(applicationContext) && uploadUrl.isBlank()) {
+            return Result.failure()
+        }
 
         val days = prefs.getInt(KEY_LOOKBACK_DAYS, 7).coerceIn(1, 90)
-        val reader = HealthConnectReader(applicationContext)
-        if (reader.client == null) return Result.retry()
-
-        val end = Instant.now()
-        val start = end.minus(days.toLong(), ChronoUnit.DAYS)
-        val snapshot = reader.readSince(start, end)
-
-        val fileName = ExportFileNames.zipName()
-        val out = File(applicationContext.cacheDir, fileName)
-        JsonExporter.writeZip(snapshot, out)
-
-        val uploader = DriveUploader(uploadUrl, prefs.getString(KEY_SECRET, "") ?: "")
-        return uploader.upload(out, fileName).fold(
-            onSuccess = { Result.success() },
-            onFailure = { Result.retry() }
-        )
+        return try {
+            val outcome = HealthExport(applicationContext).run(days)
+            val upload = outcome.upload
+            when {
+                upload == null -> Result.failure()
+                upload.isSuccess -> Result.success()
+                else -> Result.retry()
+            }
+        } catch (_: Exception) {
+            Result.retry()
+        }
     }
 
     companion object {

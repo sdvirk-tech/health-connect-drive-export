@@ -1,5 +1,13 @@
 # Apps Script: принять zip и положить в папку Drive
 
+**Это необязательный fallback.** Основной путь приложения — Google Sign-In + Drive API.
+
+Web App больше не подходит как единственный канал: GET на `/exec` ещё отвечает `{"ok":true,"service":"health-sync"}`, но POST после 302 на `script.googleusercontent.com/macros/echo` даёт **HTTP 405** (воспроизводится с `curl` и с телефона). Даже если клиент повторяет POST на Location (как `curl --location-trusted`), echo-эндпоинт метод не принимает.
+
+Используй этот скрипт только если OAuth Drive API на телефоне недоступен.
+
+---
+
 Приложение шлёт **JSON** (не multipart):
 
 ```json
@@ -103,4 +111,4 @@ print(urllib.request.urlopen(req).read().decode())
 PY
 ```
 
-`curl -L` **не подойдёт**: 302 от Google превращает POST в GET, и `doPost` не вызывается. Приложение повторяет **POST** на Location (как `curl --location-trusted`).
+`curl -L` **не подойдёт**: 302 от Google превращает POST в GET, и `doPost` не вызывается. Даже повтор POST на Location часто заканчивается **405** на `/macros/echo` — поэтому приложение по умолчанию больше не ходит в Apps Script.
