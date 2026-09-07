@@ -5,13 +5,17 @@ plugins {
 }
 
 fun driveFolderIdBuildConfig(): String {
-    val props = java.util.Properties()
     val localFile = rootProject.file("local.properties")
-    if (localFile.exists()) {
-        localFile.inputStream().use { props.load(it) }
-    }
-    val raw = props.getProperty("drive.folder.id")?.trim().orEmpty()
-        .ifEmpty { "YOUR_DRIVE_FOLDER_ID" }
+    val raw = if (localFile.isFile) {
+        localFile.readLines()
+            .map { it.trim() }
+            .firstOrNull { it.startsWith("drive.folder.id=") }
+            ?.substringAfter("=")
+            ?.trim()
+            .orEmpty()
+    } else {
+        ""
+    }.ifEmpty { "YOUR_DRIVE_FOLDER_ID" }
     val escaped = raw.replace("\\", "\\\\").replace("\"", "\\\"")
     return "\"$escaped\""
 }
