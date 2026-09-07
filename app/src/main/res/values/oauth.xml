@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Web application OAuth 2.0 Client ID from Google Cloud Console (same project as the Android client).
+      Used by Credential Manager (Sign in with Google). If empty, the app still signs in via
+      AuthorizationClient — you must still register an Android OAuth client (package + SHA-1).
+
+      Do not put a client secret here. google-services.json is optional (Firebase); this string is enough.
+    -->
+    <string name="default_web_client_id" translatable="false"></string>
+</resources>
