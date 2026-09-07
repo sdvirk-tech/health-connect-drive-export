@@ -75,7 +75,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Drive-папка
 
-https://drive.google.com/drive/folders/10pwzTmlxVLAshc7_DfOuecSktde-HKjw
+`YOUR_DRIVE_FOLDER_URL` (укажи свою папку Drive; не коммить личный URL)
 
 ## Статус
 

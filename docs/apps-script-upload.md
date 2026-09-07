@@ -26,14 +26,14 @@ Multipart в `doPost` у Apps Script почти не парсится. JSON чи
 5. Проверка: открой URL в браузере — должен вернуться `{"ok":true,"service":"health-sync"}`.
 
 Целевая папка (уже есть):  
-https://drive.google.com/drive/folders/10pwzTmlxVLAshc7_DfOuecSktde-HKjw
+YOUR_DRIVE_FOLDER_URL
 
 Старые выгрузки **не затираются**: каждый файл с датой в имени (`health_export_YYYY-MM-DD_HHmm.zip`).
 
 ## Код
 
 ```javascript
-var FOLDER_ID = '10pwzTmlxVLAshc7_DfOuecSktde-HKjw';
+var FOLDER_ID = 'YOUR_DRIVE_FOLDER_ID'; // подставь ID своей папки, не коммить личный
 var SECRET = ''; // тот же текст, что в поле «Секрет» приложения, или пусто
 
 function doGet() {
