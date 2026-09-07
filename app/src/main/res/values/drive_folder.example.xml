@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Copy this file to drive_folder.xml (gitignored) and put YOUR folder id.
+      Do not commit a personal Drive folder id.
+      Folder URL looks like: https://drive.google.com/drive/folders/YOUR_DRIVE_FOLDER_ID
+    -->
+    <string name="drive_folder_id" translatable="false">YOUR_DRIVE_FOLDER_ID</string>
+</resources>
