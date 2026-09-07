@@ -3,6 +3,8 @@
 .kotlin/
 /local.properties
 /.idea/
+# Local Drive folder id (copy from drive_folder.example.xml). Never commit a personal id.
+app/src/main/res/values/drive_folder.xml
 /build
 /app/build
 *.apk

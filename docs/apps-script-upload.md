@@ -18,22 +18,21 @@ Multipart в `doPost` у Apps Script почти не парсится. JSON чи
 ## Развёртывание
 
 1. Открой [script.google.com](https://script.google.com) → **Новый проект**.
-2. Вставь код ниже, подставь `FOLDER_ID` (и при желании `SECRET`).
+2. Вставь код ниже, подставь `FOLDER_ID` своей папки Drive (и при желании `SECRET`). Личный id в git не коммить.
 3. **Deploy → New deployment → Web app**
    - Execute as: **Me**
    - Who has access: **Anyone** (иначе телефон получит HTML-страницу логина вместо `ok`)
 4. Скопируй URL вида `https://script.google.com/macros/s/…/exec` в поле **Upload URL** в приложении.
 5. Проверка: открой URL в браузере — должен вернуться `{"ok":true,"service":"health-sync"}`.
 
-Целевая папка (уже есть):  
-https://drive.google.com/drive/folders/10pwzTmlxVLAshc7_DfOuecSktde-HKjw
+Целевая папка: укажи ID своей папки Drive (`YOUR_DRIVE_FOLDER_ID`).
 
 Старые выгрузки **не затираются**: каждый файл с датой в имени (`health_export_YYYY-MM-DD_HHmm.zip`).
 
 ## Код
 
 ```javascript
-var FOLDER_ID = '10pwzTmlxVLAshc7_DfOuecSktde-HKjw';
+var FOLDER_ID = 'YOUR_DRIVE_FOLDER_ID';
 var SECRET = ''; // тот же текст, что в поле «Секрет» приложения, или пусто
 
 function doGet() {

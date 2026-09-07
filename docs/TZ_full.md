@@ -19,8 +19,7 @@
 
 Формат выгрузки: один zip или папка с JSON/CSV по типам + `manifest.json` (время выгрузки, версии, диапазон дат, счётчики записей).
 
-Целевая папка Drive (уже есть):  
-`https://drive.google.com/drive/folders/10pwzTmlxVLAshc7_DfOuecSktde-HKjw`
+Целевая папка Drive: укажи ID своей папки Drive (`YOUR_DRIVE_FOLDER_ID`).
 
 Имя файла: `health_export_YYYY-MM-DD_HHmm.zip` (не затирать историю).
 

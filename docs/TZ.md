@@ -4,4 +4,4 @@
 
 Цель: автоматический ежедневный экспорт витальных из Samsung Health через Health Connect в Google Drive без ручного HTML-экспорта и без логина в Samsung в приложении.
 
-MVP: zip с JSON; автораз в сутки; папка Drive по ссылке выше.
+MVP: zip с JSON; автораз в сутки; папка Drive — укажи ID своей папки Drive (`YOUR_DRIVE_FOLDER_ID`).
