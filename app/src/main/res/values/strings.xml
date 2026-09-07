@@ -1,8 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Health Sync</string>
-    <string name="tip_samsung">В Samsung Health: Настройки → Health Connect → разреши те же типы данных (пульс, сон, HRV, SpO₂, давление, вес).</string>
+    <string name="intro">Samsung Health → Health Connect → zip в твою Drive-папку. Без логина в Samsung в приложении.</string>
+    <string name="tip_samsung">В Samsung Health: Настройки → Health Connect (или «Подключённые сервисы») → разреши запись тех же типов: пульс, пульс покоя, HRV, сон, SpO₂, давление, вес, шаги, дистанция, тренировки. Затем в этом приложении нажми «Запросить разрешения Health Connect».</string>
     <string name="export_now">Выгрузить сейчас</string>
     <string name="daily_sync">Автораз в сутки</string>
+    <string name="daily_scheduled">Расписание раз в сутки (нужна сеть)</string>
     <string name="request_permissions">Запросить разрешения Health Connect</string>
+    <string name="permissions_ok">Разрешения OK</string>
+    <string name="permissions_partial">Часть разрешений отклонена</string>
+    <string name="upload_url_label">Upload URL (Apps Script Web App)</string>
+    <string name="upload_url_hint">См. docs/apps-script-upload.md. Приложение шлёт JSON с fileBase64.</string>
+    <string name="secret_label">Секрет (необязательно, тот же что в скрипте)</string>
+    <string name="status_ready">Готов</string>
+    <string name="status_reading">Читаю…</string>
+    <string name="status_local_zip">Zip локально: %1$s (URL не задан)</string>
+    <string name="status_uploaded">Загружено: %1$s</string>
+    <string name="status_upload_error">Ошибка загрузки: %1$s</string>
+    <string name="hc_unavailable">Health Connect недоступен. Установи или обнови приложение Health Connect из Play Store.</string>
+    <string name="hc_update_required">Обнови Health Connect, затем открой приложение снова.</string>
 </resources>
