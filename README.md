@@ -5,6 +5,8 @@ Android-приложение: читает данные из **Health Connect** 
 Репозиторий: https://github.com/sdvirk-tech/health-connect-drive-export  
 Package / `applicationId`: `ru.sdvirk.healthsync`
 
+**Не открывай `HealthWear2` / `_Health-wear` (`com.example.health_wear`).** Это шаблон часов: Run `app` ставит Wear-APK на телефон и падает с `INSTALL_FAILED_MISSING_SHARED_LIBRARY`. Открой **этот** репозиторий, Run `app` → телефон, Run `wear` → часы. Инструкция: [`docs/install.md`](docs/install.md).
+
 ## Что делает
 
 1. Запрашивает разрешения Health Connect (пульс, покой, HRV, сон, SpO₂, давление, вес, шаги, дистанция, тренировки; плюс чтение в фоне и истории).
