@@ -116,6 +116,17 @@ object JsonExporter {
                     )
                 }
             })
+            put("watchSamples", JSONArray().apply {
+                s.watchSamples.forEach { sample ->
+                    put(
+                        JSONObject()
+                            .put("type", sample.type)
+                            .put("time", inst(java.time.Instant.ofEpochMilli(sample.timeEpochMs)))
+                            .put("value", sample.value)
+                            .put("source", "wear")
+                    )
+                }
+            })
         }
     }
 }

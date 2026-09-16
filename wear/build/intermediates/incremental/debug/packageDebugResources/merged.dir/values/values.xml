@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="android_wear_capabilities">
+        <item>healthsync_watch</item>
+    </string-array>
+    <string name="app_name">Health Sync Watch</string>
+</resources>

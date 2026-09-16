@@ -13,4 +13,6 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "HealthConnectDriveExport"
+include(":shared")
 include(":app")
+include(":wear")

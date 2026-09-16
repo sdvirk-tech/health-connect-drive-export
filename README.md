@@ -11,6 +11,7 @@ Package / `applicationId`: `ru.sdvirk.healthsync`
 2. Читает записи за N дней (по умолчанию 7).
 3. Пишет JSON + summary в zip (`health_export_YYYY-MM-DD_HHmm.zip`).
 4. POST JSON `{ fileName, mimeType, fileBase64, secret? }` на Upload URL (Apps Script Web App) → файл в Drive-папку.
+5. Если пульс из Samsung Health **не попадает** в Health Connect — приложение на **Galaxy Watch** (Wear OS) читает пульс через Health Services и шлёт пробы на телефон. Они попадают в zip как `watchSamples`.
 
 **Не** логинится в Samsung Health и **не** парсит UI.
 
@@ -19,6 +20,7 @@ Package / `applicationId`: `ru.sdvirk.healthsync`
 - Android 9+ (API 28), лучше 14+ с системным Health Connect.
 - JDK 17+ для сборки.
 - На телефоне установлены Samsung Health и Health Connect.
+- Для пульса с запястья: Galaxy Watch 4+ (Wear OS 3+), Bluetooth с телефоном.
 
 ## Сборка APK
 
@@ -32,8 +34,9 @@ Package / `applicationId`: `ru.sdvirk.healthsync`
 ### Командная строка
 
 ```bash
-./gradlew :app:assembleDebug
-# APK: app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleDebug :wear:assembleDebug
+# Телефон: app/build/outputs/apk/debug/app-debug.apk
+# Часы:    wear/build/outputs/apk/debug/wear-debug.apk
 ```
 
 Установка на телефон по USB:
@@ -41,6 +44,30 @@ Package / `applicationId`: `ru.sdvirk.healthsync`
 ```bash
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
+
+## Часы: пульс напрямую (Wear OS)
+
+Samsung Health часто **не пишет пульс** в Health Connect. Тогда телефонный zip пустой по HR. Модуль `:wear` снимает пульс (и шаги, если Health Services их отдаёт) с датчика часов и передаёт на телефон по Wear Data Layer.
+
+`applicationId` часов: `ru.sdvirk.healthsync.wear` (телефонный `ru.sdvirk.healthsync` не меняется).
+
+1. Включи режим разработчика на часах (Настройки → О часах → версия ПО, 5 нажатий) → отладка по Wi‑Fi / беспроводная отладка.
+2. Собери и поставь оба APK (телефон и часы должны быть сопряжены):
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb connect <IP_ЧАСОВ>:<ПОРТ>
+adb -s <IP_ЧАСОВ>:<ПОРТ> install -r wear/build/outputs/apk/debug/wear-debug.apk
+```
+
+3. На часах открой **Health Sync Watch** → **Разрешения** → датчики тела (лучше «Всегда» / background) → **Фон: пульс**.
+4. **Замерить сейчас** — живой пульс, когда часы на запястье.
+5. **На телефон** — отправить накопленные пробы. Фоновый сервис тоже пытается слать сам.
+6. На телефоне в статусе: `С часов на телефоне: N проб`. **Выгрузить сейчас** — в JSON поле `watchSamples` (`type: heart_rate|steps`, `source: wear`).
+
+Пробы хранятся локально ~90 дней и не затирают старые zip.
+
+Подробности: [`docs/wear-os.md`](docs/wear-os.md).
 
 ## Разрешения: Samsung Health → Health Connect
 
@@ -82,5 +109,6 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - [x] Gradle wrapper + манифест + разрешения HC (включая фон / историю)
 - [x] Reader / JSON zip / WorkManager / UI
 - [x] Надёжная загрузка в Apps Script: JSON + base64 (не multipart)
+- [x] Wear OS: пульс/шаги с часов → телефон → `watchSamples` в zip
 - [ ] OAuth Drive API как альтернатива
 - [ ] SQLite-формат как в текущем пустом `health_connect_export.db` (по желанию)

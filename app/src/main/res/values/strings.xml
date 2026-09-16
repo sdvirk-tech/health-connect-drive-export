@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Health Sync</string>
-    <string name="intro">Samsung Health → Health Connect → zip в твою Drive-папку. Без логина в Samsung в приложении.</string>
+    <string name="intro">Samsung Health → Health Connect → zip в Drive. Если пульс с часов не доходит до Health Connect — поставь Health Sync Watch и снимай показания напрямую с Galaxy Watch.</string>
     <string name="tip_samsung">В Samsung Health: Настройки → Health Connect (или «Подключённые сервисы») → разреши запись тех же типов: пульс, пульс покоя, HRV, сон, SpO₂, давление, вес, шаги, дистанция, тренировки. Затем в этом приложении нажми «Запросить разрешения Health Connect».</string>
+    <string name="tip_watch">Часы (Galaxy Watch 4+ / Wear OS 3+): установи APK модуля wear, выдай датчики (пульс «всегда»), «Фон: пульс» и «Замерить сейчас». Пробы уходят на телефон по Bluetooth и попадают в zip как watchSamples.</string>
+    <string name="status_watch_needed">С часов пока нет проб. Поставь Health Sync Watch, если HR samples: 0.</string>
+    <string name="status_watch_samples">С часов на телефоне: %1$d проб</string>
     <string name="export_now">Выгрузить сейчас</string>
     <string name="daily_sync">Автораз в сутки</string>
     <string name="daily_scheduled">Расписание раз в сутки (нужна сеть)</string>
