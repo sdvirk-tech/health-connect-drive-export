@@ -3,6 +3,8 @@
 # Gradle 8.11 cannot run on Java 25+ from Android Studio JBR.
 param(
     [string]$Watch = "",
+    [string]$Pair = "",
+    [string]$PairCode = "",
     [switch]$Rebuild
 )
 
@@ -133,6 +135,8 @@ function Resolve-WatchTarget([string]$raw) {
 }
 
 $watchTarget = Resolve-WatchTarget $Watch
+$pairTarget = $null
+if ($Pair) { $pairTarget = Resolve-WatchTarget $Pair }
 
 $phoneApk = "app\build\outputs\apk\debug\app-debug.apk"
 $wearApk = "wear\build\outputs\apk\debug\wear-debug.apk"
@@ -198,28 +202,50 @@ if ($needBuild) {
 }
 
 Write-Host "==> adb: $adb"
-cmd.exe /c "`"$adb`" start-server" | Out-Null
-if ($watchTarget) {
-    Write-Host "==> adb connect $watchTarget"
-    cmd.exe /c "`"$adb`" connect $watchTarget"
+& $adb kill-server | Out-Null
+& $adb start-server | Out-Null
+
+if ($pairTarget) {
+    Write-Host "==> adb pair $pairTarget"
+    Write-Host "Keep the pairing screen open on the watch (6-digit code)."
+    if ($PairCode) {
+        & $adb pair $pairTarget $PairCode
+    } else {
+        Write-Host "Type the 6-digit code from the watch, then Enter."
+        & $adb pair $pairTarget
+    }
 }
 
-$serials = @(cmd.exe /c "`"$adb`" devices") |
+if ($watchTarget) {
+    Write-Host "==> adb connect $watchTarget"
+    $connectOut = & $adb connect $watchTarget 2>&1 | ForEach-Object { "$_" }
+    Write-Host ($connectOut -join " ")
+}
+
+$serials = @(& $adb devices) |
     Where-Object { $_ -match "\tdevice$" } |
     ForEach-Object { ($_ -split "\s+")[0] }
 
 if ($serials.Count -eq 0) {
+    $ipHint = "192.168.2.142"
+    $connectHint = "36723"
+    if ($watchTarget -and ($watchTarget -match '^([^:]+):(\d+)$')) {
+        $ipHint = $Matches[1]
+        $connectHint = $Matches[2]
+    }
     Write-Host ""
-    Write-Host "APKs are built, but adb sees no devices." -ForegroundColor Yellow
+    Write-Host "APKs are built, but adb did not connect." -ForegroundColor Yellow
+    Write-Host "Galaxy Watch Ultra needs PAIRING first, then CONNECT. Two different ports."
+    Write-Host "PC and watch must be on the same Wi-Fi (same 192.168.2.x)."
+    Write-Host ""
+    Write-Host "On the watch: Developer options -> Wireless debugging ON."
+    Write-Host "  Main screen IP:port  = CONNECT  (you tried $ipHint`:$connectHint)"
+    Write-Host "  Pair with pairing code = another port + 6-digit code. Leave that screen open."
+    Write-Host ""
+    Write-Host "Then:"
+    Write-Host "  .\build-install.cmd -Pair $ipHint`:PAIR_PORT -PairCode 123456 -Watch $ipHint`:$connectHint"
+    Write-Host ""
     Write-Host "Phone: USB cable + USB debugging, tap Allow this computer."
-    Write-Host "Watch: copy ONLY the numbers from Wireless debugging. Example:"
-    Write-Host ""
-    Write-Host "  .\build-install.cmd -Watch 192.168.2.142:38959"
-    Write-Host ""
-    Write-Host "Do not write the word IP. Ports expire; 36169 is dead."
-    Write-Host "If 38959 already failed, turn Wireless debugging OFF/ON and copy the new port."
-    Write-Host "If the watch shows a 6-digit code, pair first:"
-    Write-Host "  adb pair 192.168.2.142:PAIR_PORT"
     Write-Host ""
     exit 2
 }
