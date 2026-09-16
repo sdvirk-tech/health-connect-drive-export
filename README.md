@@ -28,13 +28,14 @@ Package / `applicationId`: `ru.sdvirk.healthsync`
 
 Полная инструкция (телефон / часы, Windows, ошибка `MISSING_SHARED_LIBRARY`): **[`docs/install.md`](docs/install.md)**.
 
-Кратко:
+Кратко (PowerShell):
 
-```bat
-gradlew.bat :app:assembleDebug :wear:assembleDebug
-adb install -r app\build\outputs\apk\debug\app-debug.apk
-adb connect <IP_ЧАСОВ>:<ПОРТ>
-adb -s <IP_ЧАСОВ>:<ПОРТ> install -r wear\build\outputs\apk\debug\wear-debug.apk
+```powershell
+cd C:\IT\Cursor\health-connect-drive-export
+.\gradlew.bat :app:assembleDebug :wear:assembleDebug
+$adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+& $adb install -r app\build\outputs\apk\debug\app-debug.apk
+& $adb -s <IP_ЧАСОВ>:<ПОРТ> install -r wear\build\outputs\apk\debug\wear-debug.apk
 ```
 
 - Конфигурация **app** в Android Studio → только **телефон**.

@@ -42,15 +42,33 @@ git clone -b cursor/wear-os-heart-rate-8125 https://github.com/sdvirk-tech/healt
 - Если виден только `app` и имя проекта `Healt-wear` / `HealthWear2` — открыт шаблон Studio.
 - Если корень дерева — папка `wear` и Gradle пишет `Could not create parent directory for lock file C:\ProgramData\...` — открыт **подкаталог** `wear`. Закрой проект. Открой родителя. Затем **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle user home** поставь `C:\Users\%USERNAME%\.gradle` (каталог, куда Studio может писать, не `C:\ProgramData\...`). **Try Again**.
 
-Сборка и установка **в обход** Studio (подставь свой адрес часов, как в ошибке `192.168.2.142:36169`):
+Сборка и установка из **PowerShell** (не cmd). В PowerShell обязательна точка-слеш: `.\gradlew.bat`. `adb` часто не в PATH — бери из SDK Android Studio.
 
-```bat
+```powershell
 cd C:\IT\Cursor\health-connect-drive-export
-gradlew.bat :app:assembleDebug :wear:assembleDebug
+dir gradlew.bat
+$adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+& $adb devices
 
-adb devices
-adb install -r app\build\outputs\apk\debug\app-debug.apk
-adb -s 192.168.2.142:36169 install -r wear\build\outputs\apk\debug\wear-debug.apk
+.\gradlew.bat :app:assembleDebug :wear:assembleDebug
+
+& $adb install -r app\build\outputs\apk\debug\app-debug.apk
+& $adb -s 192.168.2.142:36169 install -r wear\build\outputs\apk\debug\wear-debug.apk
+```
+
+Если `dir gradlew.bat` пишет, что файла нет — ты не в корне репозитория.
+
+Если `& $adb` не находит файл — в Android Studio: **Settings → Languages & Frameworks → Android SDK** → скопируй **Android SDK Location**, затем:
+
+```powershell
+$adb = "C:\Users\ТВОЙ_ЛОГИН\AppData\Local\Android\Sdk\platform-tools\adb.exe"
+```
+
+Если `gradlew` ругается на Java: поставь JDK 17 или укажи Studio JDK:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+.\gradlew.bat :app:assembleDebug :wear:assembleDebug
 ```
 
 На часах появится **Health Sync Watch** (`ru.sdvirk.healthsync.wear`), не `com.example.health_wear`.
@@ -96,10 +114,10 @@ Android Studio 2025.1+ (нужен AGP 8.9, JDK 17):
 2. Дождись **Gradle Sync**.
 3. Слева в Project должны быть модули `app`, `wear`, `shared`.
 
-Командная строка (из корня, Windows):
+Командная строка (**PowerShell**, из корня):
 
-```bat
-gradlew.bat :app:assembleDebug :wear:assembleDebug
+```powershell
+.\gradlew.bat :app:assembleDebug :wear:assembleDebug
 ```
 
 macOS / Linux:
