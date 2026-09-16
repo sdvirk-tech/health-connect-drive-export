@@ -36,7 +36,7 @@ git pull
 .\build-install.cmd
 ```
 
-Не запускай `.\build-install.ps1` напрямую в Windows PowerShell 5.1 — без BOM кириллица ломает разбор скрипта. `.cmd` сам вызывает PowerShell с `-ExecutionPolicy Bypass`.
+Не запускай `Set-ExecutionPolicy` и не запускай `.\build-install.ps1`. Если PowerShell спросил про политику — **Ctrl+C**, затем только строка с `.cmd`. На вопрос `Y/A/N` жми одну букву `A` и Enter, не `{A}` и не `"a"`.
 
 Если Gradle пишет только `25.0.3` — это Java 25 из `Android Studio\jbr`, не «версия SDK». Скрипт ставит Temurin 17 и не трогает JBR. Если `adb` не видит часы — на Galaxy Watch выключи/включи беспроводную отладку и:
 

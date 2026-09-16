@@ -6,7 +6,9 @@
 
 | Что написало | Почему | Что делать |
 |---|---|---|
-| `What went wrong: 25.0.3` | `JAVA_HOME` указывает на **Android Studio\jbr** (Java **25**). Gradle 8.11 так не запускается. | Не ставь JBR. Скрипт ниже сам найдёт/поставит **JDK 17**. |
+| `What went wrong: 25.0.3` | `JAVA_HOME` / JBR — Java **25+** (у тебя ещё бывает **27**). Gradle 8.11 так не запускается. | Не ставь JBR. `.\build-install.cmd` сам найдёт/поставит **JDK 17**. |
+| `NativeCommandError` / `openjdk version "27"` | `java -version` пишет в stderr, а в скрипте стоял `Stop`. Это не «Java сломан». | `git pull` и снова `.\build-install.cmd`. |
+| `Изменение политики выполнения` | Ты запустил `Set-ExecutionPolicy`. Для `.cmd` это не нужно. | **Ctrl+C**. Дальше только `.\build-install.cmd`. Если уже спросило — одна буква `A` и Enter, не `{A}` и не `"a"`. |
 | `adb: no devices` / `device '192.168.2.142:36169' not found` | Wi‑Fi ADB на часах протух (порт меняется). `adb.exe` у тебя есть. | На часах выключи/включи беспроводную отладку, возьми **новый** IP:порт. |
 | `ParserError` / `Отсутствует закрывающий знак ")"` в `build-install.ps1` | Windows PowerShell 5.1 читал UTF-8 кириллицу как cp1251. | Не запускай `.ps1` напрямую. `git pull`, затем `.\build-install.cmd`. |
 
@@ -16,7 +18,7 @@ git pull
 .\build-install.cmd
 ```
 
-`.cmd` сам вызывает PowerShell с `-ExecutionPolicy Bypass`. Не нужно `Set-ExecutionPolicy`. Не запускай `.\build-install.ps1` напрямую в Windows PowerShell 5.1.
+Не запускай `Set-ExecutionPolicy` и не запускай `.\build-install.ps1`. Только `.cmd`.
 
 Если сборка прошла, а устройств нет — на часах обнови беспроводную отладку и:
 
