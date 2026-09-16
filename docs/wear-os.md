@@ -17,14 +17,9 @@ Companion к телефону: снимает пульс с Galaxy Watch чер�
 
 ## Сборка и установка
 
-```bash
-./gradlew :wear:assembleDebug :app:assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb connect <IP>:<PORT>          # беспроводная отладка на часах
-adb -s <IP>:<PORT> install -r wear/build/outputs/apk/debug/wear-debug.apk
-```
+См. **[`docs/install.md`](install.md)** — там телефон vs часы, Android Studio, Windows `gradlew.bat` и ошибка `INSTALL_FAILED_MISSING_SHARED_LIBRARY` (Wear-APK нельзя ставить на телефон).
 
-Часы и телефон должны быть сопряжены (Galaxy Wearable / Watch). Оба приложения подписаны debug-ключом из этого репозитория.
+Не открывай отдельный проект `_Health-wear` / package `com.example.health_wear`. Модуль часов — `:wear` в этом репозитории.
 
 ## На часах
 

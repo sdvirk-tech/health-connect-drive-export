@@ -22,28 +22,28 @@ Package / `applicationId`: `ru.sdvirk.healthsync`
 - На телефоне установлены Samsung Health и Health Connect.
 - Для пульса с запястья: Galaxy Watch 4+ (Wear OS 3+), Bluetooth с телефоном.
 
-## Сборка APK
+## Сборка и установка
+
+Полная инструкция (телефон / часы, Windows, ошибка `MISSING_SHARED_LIBRARY`): **[`docs/install.md`](docs/install.md)**.
+
+Кратко:
+
+```bat
+gradlew.bat :app:assembleDebug :wear:assembleDebug
+adb install -r app\build\outputs\apk\debug\app-debug.apk
+adb connect <IP_ЧАСОВ>:<ПОРТ>
+adb -s <IP_ЧАСОВ>:<ПОРТ> install -r wear\build\outputs\apk\debug\wear-debug.apk
+```
+
+- Конфигурация **app** в Android Studio → только **телефон**.
+- Конфигурация **wear** → только **часы**. Wear-APK на телефон не ставится (`com.google.android.wearable`).
+- Не используй отдельный шаблон `_Health-wear` / `com.example.health_wear` — модуль часов уже `:wear` в этом репо.
 
 ### Android Studio
 
-1. Открой корень репозитория в Android Studio (2025.1+; нужен AGP 8.9).
-2. Дождись Sync Gradle (wrapper уже в репозитории: Gradle 8.11.1, compileSdk 36).
-3. **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
-4. APK: `app/build/outputs/apk/debug/app-debug.apk`.
-
-### Командная строка
-
-```bash
-./gradlew :app:assembleDebug :wear:assembleDebug
-# Телефон: app/build/outputs/apk/debug/app-debug.apk
-# Часы:    wear/build/outputs/apk/debug/wear-debug.apk
-```
-
-Установка на телефон по USB:
-
-```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
+1. Открой **корень** репозитория (2025.1+; нужен AGP 8.9).
+2. Дождись Sync Gradle.
+3. Run **app** на телефоне. Run **wear** на часах.
 
 ## Часы: пульс напрямую (Wear OS)
 
@@ -51,23 +51,9 @@ Samsung Health часто **не пишет пульс** в Health Connect. То
 
 `applicationId` часов: `ru.sdvirk.healthsync.wear` (телефонный `ru.sdvirk.healthsync` не меняется).
 
-1. Включи режим разработчика на часах (Настройки → О часах → версия ПО, 5 нажатий) → отладка по Wi‑Fi / беспроводная отладка.
-2. Собери и поставь оба APK (телефон и часы должны быть сопряжены):
+Как собрать и поставить на часы (ADB Wi‑Fi, Android Studio, разбор `INSTALL_FAILED_MISSING_SHARED_LIBRARY`): **[`docs/install.md`](docs/install.md)**.
 
-```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb connect <IP_ЧАСОВ>:<ПОРТ>
-adb -s <IP_ЧАСОВ>:<ПОРТ> install -r wear/build/outputs/apk/debug/wear-debug.apk
-```
-
-3. На часах открой **Health Sync Watch** → **Разрешения** → датчики тела (лучше «Всегда» / background) → **Фон: пульс**.
-4. **Замерить сейчас** — живой пульс, когда часы на запястье.
-5. **На телефон** — отправить накопленные пробы. Фоновый сервис тоже пытается слать сам.
-6. На телефоне в статусе: `С часов на телефоне: N проб`. **Выгрузить сейчас** — в JSON поле `watchSamples` (`type: heart_rate|steps`, `source: wear`).
-
-Пробы хранятся локально ~90 дней и не затирают старые zip.
-
-Подробности: [`docs/wear-os.md`](docs/wear-os.md).
+Как пользоваться на часах после установки: [`docs/wear-os.md`](docs/wear-os.md).
 
 ## Разрешения: Samsung Health → Health Connect
 

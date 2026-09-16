@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-feature android:name="android.hardware.type.watch" android:required="true" />
     <uses-feature android:name="android.hardware.sensor.heartrate" android:required="false" />
@@ -25,6 +26,14 @@
         <meta-data
             android:name="com.google.android.wearable.standalone"
             android:value="false" />
+
+        <!-- Wear OS shared library. required=false so a mistaken install on a phone
+             fails with a watch-feature error instead of MISSING_SHARED_LIBRARY.
+             This APK is still only for the watch — never Run :wear on a phone. -->
+        <uses-library
+            android:name="com.google.android.wearable"
+            android:required="false"
+            tools:replace="android:required" />
 
         <activity
             android:name=".WearMainActivity"
