@@ -2,7 +2,8 @@
 # Build phone + watch APKs on JDK 17 and install via adb.
 # Gradle 8.11 cannot run on Java 25+ from Android Studio JBR.
 param(
-    [string]$Watch = ""
+    [string]$Watch = "",
+    [switch]$Rebuild
 )
 
 # Do NOT use ErrorActionPreference Stop: java.exe -version and gradle write
@@ -114,36 +115,29 @@ function Write-SdkLocalProperties([string]$sdk) {
     Set-Content -Path $file -Value $out -Encoding ASCII
 }
 
-Write-Host "==> Looking for JDK 17 (not Java 25/27 from Android Studio\jbr)..."
-$jdk = Find-Jdk17
-if (-not $jdk) {
-    Write-Host "==> JDK 17 not found. Installing Eclipse Temurin 17 (winget)..."
-    $winget = Get-Command winget -ErrorAction SilentlyContinue
-    if (-not $winget) {
-        Write-Host "winget not found. Install JDK 17: https://adoptium.net/temurin/releases/?version=17" -ForegroundColor Red
-        Write-Host "Do not use Android Studio\jbr (Java 25/27). Gradle 8.11 needs JDK 17." -ForegroundColor Red
-        exit 1
+function Resolve-WatchTarget([string]$raw) {
+    if (-not $raw) { return $null }
+    if ($raw -match '(\d{1,3}(?:\.\d{1,3}){3}:\d{1,5})') {
+        $endpoint = $Matches[1]
+        if ($raw -ne $endpoint) {
+            Write-Host "Watch argument was '$raw' - using $endpoint" -ForegroundColor Yellow
+            Write-Host "Do not type the word IP. Numbers only." -ForegroundColor Yellow
+        }
+        return $endpoint
     }
-    cmd.exe /c "winget install --id EclipseAdoptium.Temurin.17.JDK -e --accept-package-agreements --accept-source-agreements --disable-interactivity"
-    $jdk = Find-Jdk17
-}
-if (-not $jdk) {
-    Write-Host "JDK 17 still not found. Install https://adoptium.net/temurin/releases/?version=17" -ForegroundColor Red
-    Write-Host "Then open a NEW window and run only: .\build-install.cmd" -ForegroundColor Red
-    Write-Host "Do not set JAVA_HOME to Android Studio\jbr." -ForegroundColor Red
+    Write-Host "Bad -Watch value: '$raw'" -ForegroundColor Red
+    Write-Host "Copy ONLY the numbers from the watch, for example:" -ForegroundColor Red
+    Write-Host "  .\build-install.cmd -Watch 192.168.2.142:38959" -ForegroundColor Red
+    Write-Host "Not: -Watch IP:192.168.2.142:38959" -ForegroundColor Red
     exit 1
 }
 
-$env:JAVA_HOME = $jdk
-$env:PATH = "$jdk\bin;" + $env:PATH
-$major = Get-JavaMajor "$jdk\bin\java.exe"
-if ($major -ne 17) {
-    Write-Host "JAVA_HOME is still Java $major : $jdk" -ForegroundColor Red
-    exit 1
-}
+$watchTarget = Resolve-WatchTarget $Watch
 
-Write-Host "==> JAVA_HOME=$env:JAVA_HOME"
-cmd.exe /c "`"$jdk\bin\java.exe`" -version"
+$phoneApk = "app\build\outputs\apk\debug\app-debug.apk"
+$wearApk = "wear\build\outputs\apk\debug\wear-debug.apk"
+$haveApks = (Test-Path $phoneApk) -and (Test-Path $wearApk)
+$needBuild = $Rebuild -or (-not $haveApks)
 
 Write-Host "==> Looking for Android SDK..."
 $sdk = Find-AndroidSdk
@@ -159,24 +153,55 @@ $env:ANDROID_SDK_ROOT = $sdk
 $adb = Join-Path $sdk "platform-tools\adb.exe"
 $env:PATH = "$(Join-Path $sdk 'platform-tools');" + $env:PATH
 Write-Host "==> ANDROID_HOME=$sdk"
-Write-Host "==> wrote sdk.dir in local.properties"
 
-Write-Host "==> Building :app and :wear (Gradle 8.11 on JDK 17)..."
-cmd.exe /c ".\gradlew.bat :app:assembleDebug :wear:assembleDebug --no-daemon"
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if ($needBuild) {
+    Write-Host "==> Looking for JDK 17 (not Java 25/27 from Android Studio\jbr)..."
+    $jdk = Find-Jdk17
+    if (-not $jdk) {
+        Write-Host "==> JDK 17 not found. Installing Eclipse Temurin 17 (winget)..."
+        $winget = Get-Command winget -ErrorAction SilentlyContinue
+        if (-not $winget) {
+            Write-Host "winget not found. Install JDK 17: https://adoptium.net/temurin/releases/?version=17" -ForegroundColor Red
+            Write-Host "Do not use Android Studio\jbr (Java 25/27). Gradle 8.11 needs JDK 17." -ForegroundColor Red
+            exit 1
+        }
+        cmd.exe /c "winget install --id EclipseAdoptium.Temurin.17.JDK -e --accept-package-agreements --accept-source-agreements --disable-interactivity"
+        $jdk = Find-Jdk17
+    }
+    if (-not $jdk) {
+        Write-Host "JDK 17 still not found. Install https://adoptium.net/temurin/releases/?version=17" -ForegroundColor Red
+        Write-Host "Then open a NEW window and run only: .\build-install.cmd" -ForegroundColor Red
+        Write-Host "Do not set JAVA_HOME to Android Studio\jbr." -ForegroundColor Red
+        exit 1
+    }
 
-$phoneApk = "app\build\outputs\apk\debug\app-debug.apk"
-$wearApk = "wear\build\outputs\apk\debug\wear-debug.apk"
-if (-not (Test-Path $phoneApk) -or -not (Test-Path $wearApk)) {
-    Write-Host "APK files were not produced." -ForegroundColor Red
-    exit 1
+    $env:JAVA_HOME = $jdk
+    $env:PATH = "$jdk\bin;" + $env:PATH
+    $major = Get-JavaMajor "$jdk\bin\java.exe"
+    if ($major -ne 17) {
+        Write-Host "JAVA_HOME is still Java $major : $jdk" -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "==> JAVA_HOME=$env:JAVA_HOME"
+    cmd.exe /c "`"$jdk\bin\java.exe`" -version"
+
+    Write-Host "==> Building :app and :wear (Gradle 8.11 on JDK 17)..."
+    cmd.exe /c ".\gradlew.bat :app:assembleDebug :wear:assembleDebug --no-daemon"
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (-not (Test-Path $phoneApk) -or -not (Test-Path $wearApk)) {
+        Write-Host "APK files were not produced." -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "==> APKs already exist, skipping Gradle (pass -Rebuild to force)"
 }
 
 Write-Host "==> adb: $adb"
 cmd.exe /c "`"$adb`" start-server" | Out-Null
-if ($Watch) {
-    Write-Host "==> adb connect $Watch"
-    cmd.exe /c "`"$adb`" connect $Watch"
+if ($watchTarget) {
+    Write-Host "==> adb connect $watchTarget"
+    cmd.exe /c "`"$adb`" connect $watchTarget"
 }
 
 $serials = @(cmd.exe /c "`"$adb`" devices") |
@@ -185,14 +210,16 @@ $serials = @(cmd.exe /c "`"$adb`" devices") |
 
 if ($serials.Count -eq 0) {
     Write-Host ""
-    Write-Host "Build OK, but adb sees no devices." -ForegroundColor Yellow
-    Write-Host "Phone: USB debugging, tap Allow this computer on the phone screen."
-    Write-Host "Galaxy Watch Ultra (SM-L705F):"
-    Write-Host "  Developer options -> Wireless debugging OFF, then ON."
-    Write-Host "  The port changes every time. 192.168.2.142:36169 is already dead."
-    Write-Host "  Copy IP:PORT from the watch and run:"
+    Write-Host "APKs are built, but adb sees no devices." -ForegroundColor Yellow
+    Write-Host "Phone: USB cable + USB debugging, tap Allow this computer."
+    Write-Host "Watch: copy ONLY the numbers from Wireless debugging. Example:"
     Write-Host ""
-    Write-Host "  .\build-install.cmd -Watch IP:PORT"
+    Write-Host "  .\build-install.cmd -Watch 192.168.2.142:38959"
+    Write-Host ""
+    Write-Host "Do not write the word IP. Ports expire; 36169 is dead."
+    Write-Host "If 38959 already failed, turn Wireless debugging OFF/ON and copy the new port."
+    Write-Host "If the watch shows a 6-digit code, pair first:"
+    Write-Host "  adb pair 192.168.2.142:PAIR_PORT"
     Write-Host ""
     exit 2
 }

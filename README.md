@@ -40,11 +40,13 @@ git pull
 
 JDK 17 уже ставится. Если Gradle пишет `SDK location not found` — снова `git pull` и `.\build-install.cmd`: скрипт пропишет `sdk.dir` из `%LOCALAPPDATA%\Android\Sdk`.
 
-Если Gradle пишет только `25.0.3` — это Java 25 из `Android Studio\jbr`, не «версия SDK». Скрипт ставит Temurin 17 и не трогает JBR. Если `adb` не видит часы — на Galaxy Watch выключи/включи беспроводную отладку и:
+APK уже собраны (`BUILD SUCCESSFUL`). На часы — **только цифры**, без слова `IP`:
 
 ```bat
-.\build-install.cmd -Watch НОВЫЙ_IP:НОВЫЙ_ПОРТ
+.\build-install.cmd -Watch 192.168.2.142:38959
 ```
+
+Если порт протух — на часах выключи/включи беспроводную отладку и подставь новый. Телефон: USB + отладка.
 
 - Конфигурация **app** в Android Studio → только **телефон**.
 - Конфигурация **wear** → только **часы**. Wear-APK на телефон не ставится (`com.google.android.wearable`).

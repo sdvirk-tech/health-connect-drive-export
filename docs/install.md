@@ -10,7 +10,7 @@
 | `NativeCommandError` / `openjdk version "27"` | `java -version` пишет в stderr, а в скрипте стоял `Stop`. Это не «Java сломан». | `git pull` и снова `.\build-install.cmd`. |
 | `Изменение политики выполнения` | Ты запустил `Set-ExecutionPolicy`. Для `.cmd` это не нужно. | **Ctrl+C**. Дальше только `.\build-install.cmd`. Если уже спросило — одна буква `A` и Enter, не `{A}` и не `"a"`. |
 | `adb: no devices` / `device '192.168.2.142:36169' not found` | Wi‑Fi ADB на часах протух (порт меняется). `adb.exe` у тебя есть. | На часах выключи/включи беспроводную отладку, возьми **новый** IP:порт. |
-| `SDK location not found` / `local.properties` | Gradle не видит Android SDK. `adb.exe` у тебя уже есть, но `sdk.dir` не записан. | `git pull` и снова `.\build-install.cmd` — скрипт сам пропишет SDK. |
+| `no host in 'IP:192.168.2.142:…'` | В `-Watch` попало слово `IP` / `НОВЫЙ_IP`. Нужны только цифры. | `.\build-install.cmd -Watch 192.168.2.142:38959` |
 
 ```bat
 cd C:\IT\Cursor\health-connect-drive-export
@@ -20,11 +20,13 @@ git pull
 
 Не запускай `Set-ExecutionPolicy` и не запускай `.\build-install.ps1`. Только `.cmd`.
 
-Если сборка прошла, а устройств нет — на часах обнови беспроводную отладку и:
+Сборка уже прошла (`BUILD SUCCESSFUL`). На часы:
 
 ```bat
-.\build-install.cmd -Watch НОВЫЙ_IP:НОВЫЙ_ПОРТ
+.\build-install.cmd -Watch 192.168.2.142:38959
 ```
+
+Только цифры с экрана часов. Не пиши слова `IP` и `НОВЫЙ_IP`. Если порт снова протух — выключи/включи беспроводную отладку и подставь новый порт.
 
 Не задавай вручную:
 
