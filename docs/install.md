@@ -1,5 +1,38 @@
 # Сборка и установка (телефон + часы)
 
+## Windows: одна команда
+
+Две ошибки из PowerShell значат разное:
+
+| Что написало | Почему | Что делать |
+|---|---|---|
+| `What went wrong: 25.0.3` | `JAVA_HOME` указывает на **Android Studio\jbr** (Java **25**). Gradle 8.11 так не запускается. | Не ставь JBR. Скрипт ниже сам найдёт/поставит **JDK 17**. |
+| `adb: no devices` / `device '192.168.2.142:36169' not found` | Wi‑Fi ADB на часах протух (порт меняется). `adb.exe` у тебя есть. | На часах выключи/включи беспроводную отладку, возьми **новый** IP:порт. |
+| `$adb = "СЮДА\platform-tools\adb.exe"` | Это был плейсхолдер, не путь. | Не копируй. Скрипт берёт `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`. |
+
+```powershell
+cd C:\IT\Cursor\health-connect-drive-export
+git pull
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\build-install.ps1
+```
+
+Если сборка прошла, а устройств нет — на часах обнови беспроводную отладку и:
+
+```powershell
+.\build-install.ps1 -Watch НОВЫЙ_IP:НОВЫЙ_ПОРТ
+```
+
+Не задавай вручную:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+```
+
+Отсюда Java 25.0.3 — Gradle сразу падает.
+
+---
+
 ## Сначала: ты открыл не тот проект
 
 Ошибка:
@@ -42,58 +75,17 @@ git clone -b cursor/wear-os-heart-rate-8125 https://github.com/sdvirk-tech/healt
 - Если виден только `app` и имя проекта `Healt-wear` / `HealthWear2` — открыт шаблон Studio.
 - Если корень дерева — папка `wear` и Gradle пишет `Could not create parent directory for lock file C:\ProgramData\...` — открыт **подкаталог** `wear`. Закрой проект. Открой родителя. Затем **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle user home** поставь `C:\Users\%USERNAME%\.gradle` (каталог, куда Studio может писать, не `C:\ProgramData\...`). **Try Again**.
 
-Сборка и установка из **PowerShell** (не cmd). В PowerShell обязательна точка-слеш: `.\gradlew.bat`. `adb` часто не в PATH — бери из SDK Android Studio.
+Сборка из **PowerShell** (не cmd): `.\build-install.ps1` в корне репозитория. Он выставляет JDK 17, вызывает `.\gradlew.bat` и `adb.exe` из SDK.
 
-```powershell
-cd C:\IT\Cursor\health-connect-drive-export
-dir gradlew.bat
-$adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
-& $adb devices
+Если `dir gradlew.bat` пишет, что файла нет — ты не в корне репозитория (`C:\IT\Cursor\health-connect-drive-export`).
 
-.\gradlew.bat :app:assembleDebug :wear:assembleDebug
+`adb.exe` у тебя уже есть:
 
-& $adb install -r app\build\outputs\apk\debug\app-debug.apk
-& $adb -s 192.168.2.142:36169 install -r wear\build\outputs\apk\debug\wear-debug.apk
-```
+`C:\Users\Di\AppData\Local\Android\Sdk\platform-tools\adb.exe`
 
-Если `dir gradlew.bat` пишет, что файла нет — ты не в корне репозитория.
+Не копируй `$adb = "СЮДА\platform-tools\adb.exe"`. Не копируй `-s 192.168.2.142:36169` — этот порт уже истёк.
 
-Если `& $adb` не находит файл — путь у тебя уже есть:
-
-```powershell
-$adb = "C:\Users\Di\AppData\Local\Android\Sdk\platform-tools\adb.exe"
-```
-
-Не копируй `$adb = "СЮДА\platform-tools\adb.exe"` — это был плейсхолдер.
-
-`adb: no devices` и `device '192.168.2.142:36169' not found` — сессия Wi‑Fi ADB на часах протухла (порт меняется). На часах выключи/включи **беспроводную отладку**, возьми **новый** IP:порт. Телефон — USB + «разрешить отладку».
-
-```powershell
-& $adb kill-server
-& $adb start-server
-& $adb connect <НОВЫЙ_IP>:<НОВЫЙ_ПОРТ>
-& $adb devices
-```
-
-Ошибка Gradle `What went wrong: 25.0.3` — Android Studio JBR это **Java 25**, а AGP 8.9 / Gradle 8.11 собирают только на **JDK 17**. Не ставь `JAVA_HOME` на `Android Studio\jbr`, если там 25.x.
-
-```powershell
-winget install --id EclipseAdoptium.Temurin.17.JDK -e
-```
-
-Потом в **новом** окне PowerShell:
-
-```powershell
-cd C:\IT\Cursor\health-connect-drive-export
-$env:JAVA_HOME = (Get-ChildItem "C:\Program Files\Eclipse Adoptium\jdk-17*").FullName | Select-Object -First 1
-$env:JAVA_HOME
-& "$env:JAVA_HOME\bin\java.exe" -version
-
-$adb = "C:\Users\Di\AppData\Local\Android\Sdk\platform-tools\adb.exe"
-.\gradlew.bat :app:assembleDebug :wear:assembleDebug
-```
-
-Строка `rsor\health-connect-drive-export` — обрывок `cd`, её можно игнорировать. Команды вставляй **по одной**, не пакетом с битым `cd`.
+Строка `rsor\health-connect-drive-export` — обрывок `cd`, её можно игнорировать.
 
 На часах появится **Health Sync Watch** (`ru.sdvirk.healthsync.wear`), не `com.example.health_wear`.
 
@@ -135,10 +127,17 @@ requires unavailable shared library com.google.android.wearable
 Android Studio 2025.1+ (нужен AGP 8.9, JDK 17):
 
 1. **File → Open** → папка **корня** репозитория (`health-connect-drive-export`), не `_Health-wear` и не `wear/`.
-2. Дождись **Gradle Sync**.
-3. Слева в Project должны быть модули `app`, `wear`, `shared`.
+2. **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK** → **17** (Download JDK… Temurin 17). Не **jbr** / Embedded с версией 25 — иначе Sync тоже упадёт с `25.0.3`.
+3. Дождись **Gradle Sync**.
+4. Слева в Project должны быть модули `app`, `wear`, `shared`.
 
 Командная строка (**PowerShell**, из корня):
+
+```powershell
+.\build-install.ps1
+```
+
+Или только сборка, если JDK 17 уже в `JAVA_HOME` (не Studio JBR 25):
 
 ```powershell
 .\gradlew.bat :app:assembleDebug :wear:assembleDebug

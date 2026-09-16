@@ -32,10 +32,14 @@ Package / `applicationId`: `ru.sdvirk.healthsync`
 
 ```powershell
 cd C:\IT\Cursor\health-connect-drive-export
-.\gradlew.bat :app:assembleDebug :wear:assembleDebug
-$adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
-& $adb install -r app\build\outputs\apk\debug\app-debug.apk
-& $adb -s <IP_ЧАСОВ>:<ПОРТ> install -r wear\build\outputs\apk\debug\wear-debug.apk
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\build-install.ps1
+```
+
+Если Gradle пишет только `25.0.3` — это Java 25 из `Android Studio\jbr`, не «версия SDK». Скрипт ставит Temurin 17 и не трогает JBR. Если `adb` не видит часы — на Galaxy Watch выключи/включи беспроводную отладку и:
+
+```powershell
+.\build-install.ps1 -Watch НОВЫЙ_IP:НОВЫЙ_ПОРТ
 ```
 
 - Конфигурация **app** в Android Studio → только **телефон**.
@@ -45,8 +49,9 @@ $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 ### Android Studio
 
 1. Открой **корень** репозитория (2025.1+; нужен AGP 8.9).
-2. Дождись Sync Gradle.
-3. Run **app** на телефоне. Run **wear** на часах.
+2. Gradle JDK в Studio: **17**, не Embedded JBR 25.
+3. Дождись Sync Gradle.
+4. Run **app** на телефоне. Run **wear** на часах.
 
 ## Часы: пульс напрямую (Wear OS)
 
