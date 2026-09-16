@@ -1,11 +1,19 @@
-# Health Sync Watch (`:wear`)
+# НЕ открывай эту папку в Android Studio
 
-Это **часовой** модуль. APK ставится **только на Galaxy Watch** (Wear OS 3+).
+Путь на экране `C:\IT\Cursor\health-connect-drive-export\wear` — **неправильный**.
 
-На телефон будет:
+**File → Open** → на уровень выше:
 
-`INSTALL_FAILED_MISSING_SHARED_LIBRARY` / `com.google.android.wearable`
+`C:\IT\Cursor\health-connect-drive-export`
 
-Телефонное приложение — модуль `:app` в **корне** репозитория `health-connect-drive-export`, не отдельный проект `HealthWear2` / `_Health-wear` / `com.example.health_wear`.
+Слева должны быть модули `app`, `wear`, `shared`. Если корневая папка в дереве называется только `wear` — закрой окно и открой родителя.
 
-Как собрать и поставить: [`docs/install.md`](../docs/install.md).
+---
+
+Это часовой модуль. APK ставится **только на Galaxy Watch** (Wear OS 3+).
+
+На телефон: `INSTALL_FAILED_MISSING_SHARED_LIBRARY` / `com.google.android.wearable`.
+
+Телефон — модуль `:app` в корне того же репозитория.
+
+Сборка: [`docs/install.md`](../docs/install.md).

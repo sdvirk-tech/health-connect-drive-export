@@ -34,7 +34,13 @@ cd C:\IT\Cursor
 git clone -b cursor/wear-os-heart-rate-8125 https://github.com/sdvirk-tech/health-connect-drive-export.git
 ```
 
-Потом **File → Open** → `C:\IT\Cursor\health-connect-drive-export`. Слева три модуля: `app`, `wear`, `shared`. Если виден только `app` — открыт шаблон, не этот репозиторий.
+Потом **File → Open** → `C:\IT\Cursor\health-connect-drive-export`  
+(**не** `...\health-connect-drive-export\wear`).
+
+Слева три модуля: `app`, `wear`, `shared`.
+
+- Если виден только `app` и имя проекта `Healt-wear` / `HealthWear2` — открыт шаблон Studio.
+- Если корень дерева — папка `wear` и Gradle пишет `Could not create parent directory for lock file C:\ProgramData\...` — открыт **подкаталог** `wear`. Закрой проект. Открой родителя. Затем **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle user home** поставь `C:\Users\%USERNAME%\.gradle` (каталог, куда Studio может писать, не `C:\ProgramData\...`). **Try Again**.
 
 Сборка и установка **в обход** Studio (подставь свой адрес часов, как в ошибке `192.168.2.142:36169`):
 
