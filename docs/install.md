@@ -58,18 +58,42 @@ $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 
 Если `dir gradlew.bat` пишет, что файла нет — ты не в корне репозитория.
 
-Если `& $adb` не находит файл — в Android Studio: **Settings → Languages & Frameworks → Android SDK** → скопируй **Android SDK Location**, затем:
+Если `& $adb` не находит файл — путь у тебя уже есть:
 
 ```powershell
-$adb = "C:\Users\ТВОЙ_ЛОГИН\AppData\Local\Android\Sdk\platform-tools\adb.exe"
+$adb = "C:\Users\Di\AppData\Local\Android\Sdk\platform-tools\adb.exe"
 ```
 
-Если `gradlew` ругается на Java: поставь JDK 17 или укажи Studio JDK:
+Не копируй `$adb = "СЮДА\platform-tools\adb.exe"` — это был плейсхолдер.
+
+`adb: no devices` и `device '192.168.2.142:36169' not found` — сессия Wi‑Fi ADB на часах протухла (порт меняется). На часах выключи/включи **беспроводную отладку**, возьми **новый** IP:порт. Телефон — USB + «разрешить отладку».
 
 ```powershell
-$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+& $adb kill-server
+& $adb start-server
+& $adb connect <НОВЫЙ_IP>:<НОВЫЙ_ПОРТ>
+& $adb devices
+```
+
+Ошибка Gradle `What went wrong: 25.0.3` — Android Studio JBR это **Java 25**, а AGP 8.9 / Gradle 8.11 собирают только на **JDK 17**. Не ставь `JAVA_HOME` на `Android Studio\jbr`, если там 25.x.
+
+```powershell
+winget install --id EclipseAdoptium.Temurin.17.JDK -e
+```
+
+Потом в **новом** окне PowerShell:
+
+```powershell
+cd C:\IT\Cursor\health-connect-drive-export
+$env:JAVA_HOME = (Get-ChildItem "C:\Program Files\Eclipse Adoptium\jdk-17*").FullName | Select-Object -First 1
+$env:JAVA_HOME
+& "$env:JAVA_HOME\bin\java.exe" -version
+
+$adb = "C:\Users\Di\AppData\Local\Android\Sdk\platform-tools\adb.exe"
 .\gradlew.bat :app:assembleDebug :wear:assembleDebug
 ```
+
+Строка `rsor\health-connect-drive-export` — обрывок `cd`, её можно игнорировать. Команды вставляй **по одной**, не пакетом с битым `cd`.
 
 На часах появится **Health Sync Watch** (`ru.sdvirk.healthsync.wear`), не `com.example.health_wear`.
 
