@@ -20,7 +20,7 @@ Package / `applicationId`: `ru.sdvirk.healthsync`
 ## Требования
 
 - Android 9+ (API 28), лучше 14+ с системным Health Connect.
-- JDK 17+ для сборки.
+- JDK **17** для сборки (не Java 25 из Android Studio JBR — Gradle 8.11 упадёт с ошибкой `25.0.3`).
 - На телефоне установлены Samsung Health и Health Connect.
 - Для пульса с запястья: Galaxy Watch 4+ (Wear OS 3+), Bluetooth с телефоном.
 
