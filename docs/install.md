@@ -15,13 +15,39 @@ List of apks: C:\IT\Cursor\HealthWear2\app\build\intermediates\apk\debug\app-deb
 
 В таком шаблоне конфигурация называется `app`, но это **приложение для часов**. Телефон не умеет `com.google.android.wearable` → установка всегда падает.
 
-**Закрой `HealthWear2`.** Его чинить не нужно и на телефон он не встанет.
+**Закрой `Healt-wear` / `HealthWear2` / `_Health-wear`.** Это шаблон Studio, его чинить не нужно.
 
-Открой репозиторий:
+Если Studio пишет **Unavailable on device SM-L705F** и **No target device found** — часы как раз подключены (SM-L705F = Galaxy Watch Ultra). Шаблон Studio часто имеет слишком высокий minSdk или Studio не видит признаки Wear по Wi‑Fi ADB. Не жми Run в этом окне.
 
-`C:\IT\Cursor\health-connect-drive-export`
+Модуль часов есть **только в ветке PR**, в `main` его ещё нет. В PowerShell:
 
-**File → Open** → именно эту папку. Слева должны быть модули `app`, `wear`, `shared`.
+```bat
+cd C:\IT\Cursor\health-connect-drive-export
+git fetch origin
+git checkout cursor/wear-os-heart-rate-8125
+```
+
+Если папки репозитория нет:
+
+```bat
+cd C:\IT\Cursor
+git clone -b cursor/wear-os-heart-rate-8125 https://github.com/sdvirk-tech/health-connect-drive-export.git
+```
+
+Потом **File → Open** → `C:\IT\Cursor\health-connect-drive-export`. Слева три модуля: `app`, `wear`, `shared`. Если виден только `app` — открыт шаблон, не этот репозиторий.
+
+Сборка и установка **в обход** Studio (подставь свой адрес часов, как в ошибке `192.168.2.142:36169`):
+
+```bat
+cd C:\IT\Cursor\health-connect-drive-export
+gradlew.bat :app:assembleDebug :wear:assembleDebug
+
+adb devices
+adb install -r app\build\outputs\apk\debug\app-debug.apk
+adb -s 192.168.2.142:36169 install -r wear\build\outputs\apk\debug\wear-debug.apk
+```
+
+На часах появится **Health Sync Watch** (`ru.sdvirk.healthsync.wear`), не `com.example.health_wear`.
 
 | Где жмёшь Run | Куда ставится | Package |
 |---|---|---|
