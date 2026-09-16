@@ -4,7 +4,7 @@ pluginManagement {
     if (major >= 25) {
         throw GradleException(
             "Gradle 8.11 cannot run on Java $major (${System.getProperty("java.home")}). " +
-                "Use JDK 17, not Android Studio JBR 25. On Windows run .\\build-install.ps1"
+                "Use JDK 17, not Android Studio JBR 25. On Windows run .\\build-install.cmd"
         )
     }
     repositories {

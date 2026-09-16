@@ -17,7 +17,7 @@ Companion к телефону: снимает пульс с Galaxy Watch чер�
 
 ## Сборка и установка
 
-См. **[`docs/install.md`](install.md)** — там телефон vs часы, Android Studio, Windows `.\build-install.ps1` и ошибка `INSTALL_FAILED_MISSING_SHARED_LIBRARY` (Wear-APK нельзя ставить на телефон).
+См. **[`docs/install.md`](install.md)** — там телефон vs часы, Android Studio, Windows `.\build-install.cmd` и ошибка `INSTALL_FAILED_MISSING_SHARED_LIBRARY` (Wear-APK нельзя ставить на телефон).
 
 Не открывай отдельный проект `_Health-wear` / package `com.example.health_wear`. Модуль часов — `:wear` в этом репозитории.
 

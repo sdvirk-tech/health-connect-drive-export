@@ -1,17 +1,6 @@
-#Requires -Version 5.1
-<#
-.SYNOPSIS
-  Сборка Health Sync (телефон + часы) на JDK 17 и установка через adb.
-
-.DESCRIPTION
-  Gradle 8.11 / AGP 8.9 не работают на Java 25 из Android Studio JBR
-  (ошибка сборки ровно "25.0.3"). Скрипт находит или ставит JDK 17,
-  собирает APK и ставит их на USB-телефон и Wi-Fi часы.
-
-.PARAMETER Watch
-  Опционально: IP:порт беспроводной отладки часов, например 192.168.2.142:41234.
-  Старый порт 36169 уже недействителен — на часах выключи/включи отладку и возьми новый.
-#>
+﻿#Requires -Version 5.1
+# Build phone + watch APKs on JDK 17 and install via adb.
+# Gradle 8.11 cannot run on Java 25 from Android Studio JBR (error text is just "25.0.3").
 param(
     [string]$Watch = ""
 )
@@ -59,29 +48,29 @@ function Find-Jdk17 {
         $major = Get-JavaMajor $java
         if ($major -eq 17) { return $dir }
         if ($major -ge 25) {
-            Write-Host "Пропускаю Java $major ($dir) — Gradle 8.11 на ней падает с ошибкой $major.x" -ForegroundColor DarkYellow
+            Write-Host "Skip Java $major ($dir) - Gradle 8.11 fails with error $major.x" -ForegroundColor DarkYellow
         }
     }
     return $null
 }
 
-Write-Host "==> Ищу JDK 17 (не Java 25 из Android Studio\jbr)..."
+Write-Host "==> Looking for JDK 17 (not Java 25 from Android Studio\jbr)..."
 $jdk = Find-Jdk17
 if (-not $jdk) {
-    Write-Host "==> JDK 17 нет. Ставлю Eclipse Temurin 17 (winget)..."
+    Write-Host "==> JDK 17 not found. Installing Eclipse Temurin 17 (winget)..."
     $winget = Get-Command winget -ErrorAction SilentlyContinue
     if (-not $winget) {
-        Write-Host "winget не найден. Поставь JDK 17: https://adoptium.net/temurin/releases/?version=17" -ForegroundColor Red
-        Write-Host "Не используй JAVA_HOME=C:\Program Files\Android\Android Studio\jbr (это Java 25)." -ForegroundColor Red
+        Write-Host "winget not found. Install JDK 17: https://adoptium.net/temurin/releases/?version=17" -ForegroundColor Red
+        Write-Host "Do not set JAVA_HOME to C:\Program Files\Android\Android Studio\jbr (that is Java 25)." -ForegroundColor Red
         exit 1
     }
     & winget install --id EclipseAdoptium.Temurin.17.JDK -e --accept-package-agreements --accept-source-agreements --disable-interactivity
     $jdk = Find-Jdk17
 }
 if (-not $jdk) {
-    Write-Host "JDK 17 так и не найден. Установи https://adoptium.net/temurin/releases/?version=17" -ForegroundColor Red
-    Write-Host "Закрой это окно, открой новое PowerShell и запусти .\build-install.ps1 снова." -ForegroundColor Red
-    Write-Host "Не ставь JAVA_HOME на Android Studio\jbr — оттуда Java 25 и Gradle пишет только: 25.0.3" -ForegroundColor Red
+    Write-Host "JDK 17 still not found. Install https://adoptium.net/temurin/releases/?version=17" -ForegroundColor Red
+    Write-Host "Then open a NEW PowerShell window and run .\build-install.cmd again." -ForegroundColor Red
+    Write-Host "Do not set JAVA_HOME to Android Studio\jbr - that is Java 25 and Gradle prints only: 25.0.3" -ForegroundColor Red
     exit 1
 }
 
@@ -89,7 +78,7 @@ $env:JAVA_HOME = $jdk
 $env:PATH = "$jdk\bin;" + $env:PATH
 $major = Get-JavaMajor "$jdk\bin\java.exe"
 if ($major -ne 17) {
-    Write-Host "JAVA_HOME всё ещё Java $major: $jdk" -ForegroundColor Red
+    Write-Host "JAVA_HOME is still Java $major : $jdk" -ForegroundColor Red
     exit 1
 }
 
@@ -101,20 +90,19 @@ if (-not (Test-Path $adb)) {
     $adb = "C:\Users\Di\AppData\Local\Android\Sdk\platform-tools\adb.exe"
 }
 if (-not (Test-Path $adb)) {
-    Write-Host "adb не найден: $adb" -ForegroundColor Red
-    Write-Host "В Android Studio: Settings → Android SDK → скопируй SDK Location, затем:"
-    Write-Host "  Join-Path <SDK> 'platform-tools\adb.exe'"
+    Write-Host "adb not found: $adb" -ForegroundColor Red
+    Write-Host "Android Studio: Settings -> Android SDK -> copy SDK Location, then platform-tools\adb.exe"
     exit 1
 }
 
-Write-Host "==> Собираю :app и :wear (Gradle 8.11 на JDK 17)..."
+Write-Host "==> Building :app and :wear (Gradle 8.11 on JDK 17)..."
 & .\gradlew.bat :app:assembleDebug :wear:assembleDebug --no-daemon
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $phoneApk = "app\build\outputs\apk\debug\app-debug.apk"
 $wearApk = "wear\build\outputs\apk\debug\wear-debug.apk"
 if (-not (Test-Path $phoneApk) -or -not (Test-Path $wearApk)) {
-    Write-Host "APK не собрались." -ForegroundColor Red
+    Write-Host "APK files were not produced." -ForegroundColor Red
     exit 1
 }
 
@@ -132,15 +120,14 @@ $serials = @(& $adb devices) |
 
 if ($serials.Count -eq 0) {
     Write-Host ""
-    Write-Host "Сборка OK, но adb не видит устройства." -ForegroundColor Yellow
-    Write-Host "Телефон: USB, отладка, на экране «разрешить этот компьютер»."
-    Write-Host "Часы Galaxy Watch Ultra (SM-L705F):"
-    Write-Host "  Параметры разработчика → Беспроводная отладка ВЫКЛ, затем ВКЛ."
-    Write-Host "  Порт каждый раз новый. 192.168.2.142:36169 уже мёртвый."
-    Write-Host "  С экрана часов скопируй IP:порт и выполни:"
+    Write-Host "Build OK, but adb sees no devices." -ForegroundColor Yellow
+    Write-Host "Phone: USB debugging, tap Allow this computer on the phone screen."
+    Write-Host "Galaxy Watch Ultra (SM-L705F):"
+    Write-Host "  Developer options -> Wireless debugging OFF, then ON."
+    Write-Host "  The port changes every time. 192.168.2.142:36169 is already dead."
+    Write-Host "  Copy IP:PORT from the watch and run:"
     Write-Host ""
-    Write-Host "  & `"$adb`" connect IP:ПОРТ"
-    Write-Host "  .\build-install.ps1 -Watch IP:ПОРТ"
+    Write-Host ("  .\build-install.cmd -Watch IP:PORT")
     Write-Host ""
     exit 2
 }
@@ -148,16 +135,16 @@ if ($serials.Count -eq 0) {
 $installed = $false
 foreach ($serial in $serials) {
     if ($serial -match "^\d+\.\d+\.\d+\.\d+:") {
-        Write-Host "==> Часы $serial ← wear APK (ru.sdvirk.healthsync.wear)"
+        Write-Host "==> Watch $serial <- wear APK (ru.sdvirk.healthsync.wear)"
         & $adb -s $serial install -r $wearApk
         $installed = $true
     } else {
-        Write-Host "==> Телефон $serial ← app APK (ru.sdvirk.healthsync)"
+        Write-Host "==> Phone $serial <- app APK (ru.sdvirk.healthsync)"
         & $adb -s $serial install -r $phoneApk
         $installed = $true
     }
 }
 
 if ($installed) {
-    Write-Host "==> Готово. На часах открой Health Sync Watch, на телефоне — Health Sync."
+    Write-Host "==> Done. Open Health Sync Watch on the watch, Health Sync on the phone."
 }

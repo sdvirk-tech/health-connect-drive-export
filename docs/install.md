@@ -8,19 +8,20 @@
 |---|---|---|
 | `What went wrong: 25.0.3` | `JAVA_HOME` указывает на **Android Studio\jbr** (Java **25**). Gradle 8.11 так не запускается. | Не ставь JBR. Скрипт ниже сам найдёт/поставит **JDK 17**. |
 | `adb: no devices` / `device '192.168.2.142:36169' not found` | Wi‑Fi ADB на часах протух (порт меняется). `adb.exe` у тебя есть. | На часах выключи/включи беспроводную отладку, возьми **новый** IP:порт. |
-| `$adb = "СЮДА\platform-tools\adb.exe"` | Это был плейсхолдер, не путь. | Не копируй. Скрипт берёт `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`. |
+| `ParserError` / `Отсутствует закрывающий знак ")"` в `build-install.ps1` | Windows PowerShell 5.1 читал UTF-8 кириллицу как cp1251. | Не запускай `.ps1` напрямую. `git pull`, затем `.\build-install.cmd`. |
 
-```powershell
+```bat
 cd C:\IT\Cursor\health-connect-drive-export
 git pull
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\build-install.ps1
+.\build-install.cmd
 ```
+
+`.cmd` сам вызывает PowerShell с `-ExecutionPolicy Bypass`. Не нужно `Set-ExecutionPolicy`. Не запускай `.\build-install.ps1` напрямую в Windows PowerShell 5.1.
 
 Если сборка прошла, а устройств нет — на часах обнови беспроводную отладку и:
 
-```powershell
-.\build-install.ps1 -Watch НОВЫЙ_IP:НОВЫЙ_ПОРТ
+```bat
+.\build-install.cmd -Watch НОВЫЙ_IP:НОВЫЙ_ПОРТ
 ```
 
 Не задавай вручную:
@@ -75,7 +76,7 @@ git clone -b cursor/wear-os-heart-rate-8125 https://github.com/sdvirk-tech/healt
 - Если виден только `app` и имя проекта `Healt-wear` / `HealthWear2` — открыт шаблон Studio.
 - Если корень дерева — папка `wear` и Gradle пишет `Could not create parent directory for lock file C:\ProgramData\...` — открыт **подкаталог** `wear`. Закрой проект. Открой родителя. Затем **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle user home** поставь `C:\Users\%USERNAME%\.gradle` (каталог, куда Studio может писать, не `C:\ProgramData\...`). **Try Again**.
 
-Сборка из **PowerShell** (не cmd): `.\build-install.ps1` в корне репозитория. Он выставляет JDK 17, вызывает `.\gradlew.bat` и `adb.exe` из SDK.
+Сборка из корня репозитория: `.\build-install.cmd` (он выставляет JDK 17, вызывает `.\gradlew.bat` и `adb.exe` из SDK).
 
 Если `dir gradlew.bat` пишет, что файла нет — ты не в корне репозитория (`C:\IT\Cursor\health-connect-drive-export`).
 
@@ -133,8 +134,8 @@ Android Studio 2025.1+ (нужен AGP 8.9, JDK 17):
 
 Командная строка (**PowerShell**, из корня):
 
-```powershell
-.\build-install.ps1
+```bat
+.\build-install.cmd
 ```
 
 Или только сборка, если JDK 17 уже в `JAVA_HOME` (не Studio JBR 25):

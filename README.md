@@ -28,18 +28,20 @@ Package / `applicationId`: `ru.sdvirk.healthsync`
 
 Полная инструкция (телефон / часы, Windows, ошибка `MISSING_SHARED_LIBRARY`): **[`docs/install.md`](docs/install.md)**.
 
-Кратко (PowerShell):
+Кратко:
 
-```powershell
+```bat
 cd C:\IT\Cursor\health-connect-drive-export
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\build-install.ps1
+git pull
+.\build-install.cmd
 ```
+
+Не запускай `.\build-install.ps1` напрямую в Windows PowerShell 5.1 — без BOM кириллица ломает разбор скрипта. `.cmd` сам вызывает PowerShell с `-ExecutionPolicy Bypass`.
 
 Если Gradle пишет только `25.0.3` — это Java 25 из `Android Studio\jbr`, не «версия SDK». Скрипт ставит Temurin 17 и не трогает JBR. Если `adb` не видит часы — на Galaxy Watch выключи/включи беспроводную отладку и:
 
-```powershell
-.\build-install.ps1 -Watch НОВЫЙ_IP:НОВЫЙ_ПОРТ
+```bat
+.\build-install.cmd -Watch НОВЫЙ_IP:НОВЫЙ_ПОРТ
 ```
 
 - Конфигурация **app** в Android Studio → только **телефон**.

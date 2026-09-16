@@ -16,4 +16,4 @@
 
 Телефон — модуль `:app` в корне того же репозитория.
 
-Сборка: [`docs/install.md`](../docs/install.md). Из корня репозитория (PowerShell): `.\build-install.ps1`.
+Сборка: [`docs/install.md`](../docs/install.md). Из корня репозитория: `.\build-install.cmd`.
