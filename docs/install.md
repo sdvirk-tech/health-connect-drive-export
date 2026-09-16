@@ -1,5 +1,37 @@
 # Сборка и установка (телефон + часы)
 
+## Сначала: ты открыл не тот проект
+
+Ошибка:
+
+```
+Error running 'app'
+INSTALL_FAILED_MISSING_SHARED_LIBRARY
+Package com.example.health_wear requires unavailable shared library com.google.android.wearable
+List of apks: C:\IT\Cursor\HealthWear2\app\build\intermediates\apk\debug\app-debug.apk
+```
+
+(то же самое с `_Health-wear`) — это **шаблон Android Studio «Wear OS»**, не Health Sync.
+
+В таком шаблоне конфигурация называется `app`, но это **приложение для часов**. Телефон не умеет `com.google.android.wearable` → установка всегда падает.
+
+**Закрой `HealthWear2`.** Его чинить не нужно и на телефон он не встанет.
+
+Открой репозиторий:
+
+`C:\IT\Cursor\health-connect-drive-export`
+
+**File → Open** → именно эту папку. Слева должны быть модули `app`, `wear`, `shared`.
+
+| Где жмёшь Run | Куда ставится | Package |
+|---|---|---|
+| `app` | телефон | `ru.sdvirk.healthsync` |
+| `wear` | Galaxy Watch | `ru.sdvirk.healthsync.wear` |
+
+Если в логе package `com.example.health_wear` — снова открыт шаблон, не этот репозиторий.
+
+---
+
 В репозитории **два приложения**, не одно.
 
 | Gradle-модуль | APK | Куда ставить | `applicationId` |
