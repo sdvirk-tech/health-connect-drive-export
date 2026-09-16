@@ -11,6 +11,7 @@ import androidx.work.WorkerParameters
 import ru.sdvirk.healthsync.drive.DriveUploader
 import ru.sdvirk.healthsync.export.ExportFileNames
 import ru.sdvirk.healthsync.export.JsonExporter
+import ru.sdvirk.healthsync.export.withWatchSamples
 import ru.sdvirk.healthsync.health.HealthConnectReader
 import java.io.File
 import java.time.Instant
@@ -33,7 +34,7 @@ class DailyExportWorker(
 
         val end = Instant.now()
         val start = end.minus(days.toLong(), ChronoUnit.DAYS)
-        val snapshot = reader.readSince(start, end)
+        val snapshot = reader.readSince(start, end).withWatchSamples(applicationContext)
 
         val fileName = ExportFileNames.zipName()
         val out = File(applicationContext.cacheDir, fileName)

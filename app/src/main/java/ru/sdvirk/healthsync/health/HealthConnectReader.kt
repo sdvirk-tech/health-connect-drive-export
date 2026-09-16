@@ -17,6 +17,7 @@ import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import ru.sdvirk.healthsync.watch.WatchSample
 import java.time.Instant
 import kotlin.reflect.KClass
 
@@ -110,6 +111,7 @@ data class HealthSnapshot(
     val exportedAt: Instant,
     val rangeStart: Instant,
     val rangeEnd: Instant,
+    val watchSamples: List<WatchSample> = emptyList(),
 ) {
     companion object {
         fun empty() = HealthSnapshot(
@@ -130,5 +132,7 @@ data class HealthSnapshot(
         "Steps: ${steps.size}",
         "Distance: ${distance.size}",
         "Exercise: ${exercise.size}",
+        "Watch HR: ${watchSamples.count { it.type == WatchSample.HEART_RATE }}",
+        "Watch steps: ${watchSamples.count { it.type == WatchSample.STEPS }}",
     )
 }

@@ -33,6 +33,8 @@ import ru.sdvirk.healthsync.R
 import ru.sdvirk.healthsync.drive.DriveUploader
 import ru.sdvirk.healthsync.export.ExportFileNames
 import ru.sdvirk.healthsync.export.JsonExporter
+import ru.sdvirk.healthsync.export.watchSampleCount
+import ru.sdvirk.healthsync.export.withWatchSamples
 import ru.sdvirk.healthsync.health.HealthConnectReader
 import ru.sdvirk.healthsync.worker.DailyExportWorker
 import java.io.File
@@ -87,6 +89,10 @@ class MainActivity : ComponentActivity() {
                             stringResource(R.string.tip_samsung),
                             style = MaterialTheme.typography.bodySmall
                         )
+                        Text(
+                            stringResource(R.string.tip_watch),
+                            style = MaterialTheme.typography.bodySmall
+                        )
                         OutlinedTextField(
                             value = uploadUrl,
                             onValueChange = {
@@ -124,7 +130,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                     val end = Instant.now()
                                     val start = end.minus(7, ChronoUnit.DAYS)
-                                    val snap = reader.readSince(start, end)
+                                    val snap = reader.readSince(start, end).withWatchSamples(this@MainActivity)
                                     val fileName = ExportFileNames.zipName()
                                     val out = File(cacheDir, fileName)
                                     JsonExporter.writeZip(snap, out)
@@ -168,10 +174,16 @@ class MainActivity : ComponentActivity() {
 
     private fun initialStatus(): String {
         val sdk = if (::reader.isInitialized) reader.availability() else HealthConnectClient.SDK_UNAVAILABLE
-        return if (sdk == HealthConnectClient.SDK_AVAILABLE) {
+        val hc = if (sdk == HealthConnectClient.SDK_AVAILABLE) {
             getString(R.string.status_ready)
         } else {
             healthConnectUnavailableMessage(sdk)
+        }
+        val watch = watchSampleCount(this)
+        return if (watch > 0) {
+            "$hc\n${getString(R.string.status_watch_samples, watch)}"
+        } else {
+            "$hc\n${getString(R.string.status_watch_needed)}"
         }
     }
 
