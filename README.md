@@ -38,6 +38,8 @@ git pull
 
 Не запускай `Set-ExecutionPolicy` и не запускай `.\build-install.ps1`. Если PowerShell спросил про политику — **Ctrl+C**, затем только строка с `.cmd`. На вопрос `Y/A/N` жми одну букву `A` и Enter, не `{A}` и не `"a"`.
 
+JDK 17 уже ставится. Если Gradle пишет `SDK location not found` — снова `git pull` и `.\build-install.cmd`: скрипт пропишет `sdk.dir` из `%LOCALAPPDATA%\Android\Sdk`.
+
 Если Gradle пишет только `25.0.3` — это Java 25 из `Android Studio\jbr`, не «версия SDK». Скрипт ставит Temurin 17 и не трогает JBR. Если `adb` не видит часы — на Galaxy Watch выключи/включи беспроводную отладку и:
 
 ```bat
