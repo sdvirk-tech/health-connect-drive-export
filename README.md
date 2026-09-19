@@ -5,42 +5,81 @@ Android-приложение: читает данные из **Health Connect** 
 Репозиторий: https://github.com/sdvirk-tech/health-connect-drive-export  
 Package / `applicationId`: `ru.sdvirk.healthsync`
 
+**Не открывай `HealthWear2` / `_Health-wear` (`com.example.health_wear`).** Это шаблон часов: Run `app` ставит Wear-APK на телефон и падает с `INSTALL_FAILED_MISSING_SHARED_LIBRARY`. Открой **этот** репозиторий, Run `app` → телефон, Run `wear` → часы. Инструкция: [`docs/install.md`](docs/install.md).
+
 ## Что делает
 
 1. Запрашивает разрешения Health Connect (пульс, покой, HRV, сон, SpO₂, давление, вес, шаги, дистанция, тренировки; плюс чтение в фоне и истории).
 2. Читает записи за N дней (по умолчанию 7).
 3. Пишет JSON + summary в zip (`health_export_YYYY-MM-DD_HHmm.zip`).
 4. POST JSON `{ fileName, mimeType, fileBase64, secret? }` на Upload URL (Apps Script Web App) → файл в Drive-папку.
+5. Если пульс из Samsung Health **не попадает** в Health Connect — приложение на **Galaxy Watch** (Wear OS) читает пульс через Health Services и шлёт пробы на телефон. Они попадают в zip как `watchSamples`.
 
 **Не** логинится в Samsung Health и **не** парсит UI.
 
 ## Требования
 
 - Android 9+ (API 28), лучше 14+ с системным Health Connect.
-- JDK 17+ для сборки.
+- JDK **17** для сборки (не Java 25 из Android Studio JBR — Gradle 8.11 упадёт с ошибкой `25.0.3`).
 - На телефоне установлены Samsung Health и Health Connect.
+- Для пульса с запястья: Galaxy Watch 4+ (Wear OS 3+), Bluetooth с телефоном.
 
-## Сборка APK
+## Сборка и установка
+
+Полная инструкция (телефон / часы, Windows, ошибка `MISSING_SHARED_LIBRARY`): **[`docs/install.md`](docs/install.md)**.
+
+Кратко:
+
+```bat
+cd C:\IT\Cursor\health-connect-drive-export
+git pull
+.\build-install.cmd
+```
+
+Не запускай `Set-ExecutionPolicy` и не запускай `.\build-install.ps1`. Если PowerShell спросил про политику — **Ctrl+C**, затем только строка с `.cmd`. На вопрос `Y/A/N` жми одну букву `A` и Enter, не `{A}` и не `"a"`.
+
+JDK 17 уже ставится. Если Gradle пишет `SDK location not found` — снова `git pull` и `.\build-install.cmd`: скрипт пропишет `sdk.dir` из `%LOCALAPPDATA%\Android\Sdk`.
+
+APK уже собраны. На Galaxy Watch Ultra сначала **pair**, потом **connect** (два разных порта). Только часы, без Gradle:
+
+```bat
+git fetch origin
+git checkout cursor/watch-vitals-export-8125
+.\install-watch.cmd -Apk C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk -Watch 192.168.2.142:44643
+```
+
+Не копируй слова `ПОРТ_КОДА`. Если `adb devices` уже показывает часы как `device`, `-Pair` не нужен.
+
+На часах открой «Сопряжение по коду», оставь экран открытым. ПК и часы — одна Wi‑Fi сеть `192.168.2.x`. Телефон: USB + отладка.
+
+- Конфигурация **app** в Android Studio → только **телефон**.
+- Конфигурация **wear** → только **часы**. Wear-APK на телефон не ставится (`com.google.android.wearable`).
+- Не используй отдельный шаблон `_Health-wear` / `com.example.health_wear` — модуль часов уже `:wear` в этом репо.
 
 ### Android Studio
 
-1. Открой корень репозитория в Android Studio (2025.1+; нужен AGP 8.9).
-2. Дождись Sync Gradle (wrapper уже в репозитории: Gradle 8.11.1, compileSdk 36).
-3. **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
-4. APK: `app/build/outputs/apk/debug/app-debug.apk`.
+1. Открой **корень** репозитория (2025.1+; нужен AGP 8.9).
+2. Gradle JDK в Studio: **17**, не Embedded JBR 25.
+3. Дождись Sync Gradle.
+4. Run **app** на телефоне. Run **wear** на часах.
 
-### Командная строка
+## Часы: датчики + Health Connect (Wear OS)
 
-```bash
-./gradlew :app:assembleDebug
-# APK: app/build/outputs/apk/debug/app-debug.apk
-```
+Samsung Health часто **не пишет** пульс/HRV/сон/SpO₂/давление в Health Connect на телефоне. Модуль `:wear`:
 
-Установка на телефон по USB:
+- живой **пульс, шаги, калории, дистанция, этажи, набор высоты** с датчика через Health Services (все типы, которые часы объявляют);
+- **сон** как состояние asleep (надень часы на ночь); **HRV, SpO₂, давление** — только если Samsung пишет в Health Connect на **телефоне** (на Galaxy Watch Ultra Health Connect на часах нет);
+- всё уходит на телефон по Bluetooth (RFCOMM) в zip (`watchSamples`) и в выбранную папку.
 
-```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
+**ЭКГ** Samsung Health Monitor не отдаёт в Health Connect 1.1 и не виден через Health Services.
+
+На телефоне кнопка **«Почему нет данных»** показывает: разрешения есть, а записей нет (Samsung не пишет), или часы ещё не прислали пробы.
+
+`applicationId` часов: `ru.sdvirk.healthsync.wear` (телефонный `ru.sdvirk.healthsync` не меняется).
+
+Как собрать и поставить на часы (ADB Wi‑Fi, Android Studio, разбор `INSTALL_FAILED_MISSING_SHARED_LIBRARY`): **[`docs/install.md`](docs/install.md)**.
+
+Как пользоваться на часах после установки: [`docs/wear-os.md`](docs/wear-os.md).
 
 ## Разрешения: Samsung Health → Health Connect
 
@@ -82,5 +121,6 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - [x] Gradle wrapper + манифест + разрешения HC (включая фон / историю)
 - [x] Reader / JSON zip / WorkManager / UI
 - [x] Надёжная загрузка в Apps Script: JSON + base64 (не multipart)
+- [x] Wear OS: все типы Health Services с часов → телефон → `watchSamples` в zip
 - [ ] OAuth Drive API как альтернатива
 - [ ] SQLite-формат как в текущем пустом `health_connect_export.db` (по желанию)

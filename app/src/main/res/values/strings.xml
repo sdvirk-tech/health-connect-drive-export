@@ -1,8 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Health Sync</string>
-    <string name="intro">Samsung Health → Health Connect → zip в твою Drive-папку. Без логина в Samsung в приложении.</string>
-    <string name="tip_samsung">В Samsung Health: Настройки → Health Connect (или «Подключённые сервисы») → разреши запись тех же типов: пульс, пульс покоя, HRV, сон, SpO₂, давление, вес, шаги, дистанция, тренировки. Затем в этом приложении нажми «Запросить разрешения Health Connect».</string>
+    <string name="intro">Часы → телефон по Bluetooth. С Ultra снимаем всё, что отдаёт Health Services: пульс, шаги, калории, дистанцию, этажи, набор высоты, сон-asleep. SpO₂/давление/ЭКГ Samsung не отдаёт в Health Services — только если пишет в Health Connect на телефоне.</string>
+    <string name="tip_samsung">Разрешения Health Sync только ЧИТАЮТ Health Connect. Галочки в Health Connect ≠ данные. Нужно: Samsung Health → Настройки → Health Connect → включить запись; в Health Connect у Samsung Health тоже все типы как у источника. Без «доступа к прошлым данным» новое приложение видит 0. Давление/ЭКГ — Samsung Health Monitor.</string>
+    <string name="open_health_connect">Настройки Health Connect</string>
+    <string name="open_samsung_health">Открыть Samsung Health</string>
+    <string name="tip_watch">Пульс с часов идёт по Bluetooth в Health Sync, не в приложение Health Connect. Держи Health Sync открытым. На часах разреши датчики и Bluetooth — пульс снимается сам. Wear-APK только на часы. На Samsung нет отдельного Health Connect — разрешения: «Запросить разрешения Health Connect».</string>
+    <string name="hc_no_app">Отдельного приложения Health Connect на Samsung нет, Health Sync само себя не открывает. Нажми «Запросить разрешения Health Connect» — это системный экран разрешений. Писатель данных: Samsung Health → Настройки → Health Connect.</string>
+    <string name="hc_unavailable">Health Connect API недоступен. На Samsung он встроен в систему (Настройки), отдельного значка часто нет.</string>
+    <string name="watch_log_copy">Показать лог часов</string>
+    <string name="watch_log_empty">Лога с часов ещё нет. На часах нажми «Лог на телефон».</string>
+    <string name="watch_log_copied">Лог часов скопирован</string>
+    <string name="choose_folder">Папка для zip</string>
+    <string name="folder_saved">Папка сохранена. Выгрузка скопирует zip туда.</string>
+    <string name="status_folder_copied">Zip скопирован в выбранную папку</string>
+    <string name="why_empty">Почему нет данных</string>
+    <string name="status_probe">Проверяю разрешения и источники…</string>
+    <string name="status_watch_needed">С часов пока нет проб. Поставь Health Sync Watch, если HR samples: 0.</string>
+    <string name="status_watch_samples">С часов на телефоне: %1$d проб</string>
     <string name="export_now">Выгрузить сейчас</string>
     <string name="daily_sync">Автораз в сутки</string>
     <string name="daily_scheduled">Расписание раз в сутки (нужна сеть)</string>
@@ -17,6 +32,5 @@
     <string name="status_local_zip">Zip локально: %1$s (URL не задан)</string>
     <string name="status_uploaded">Загружено: %1$s</string>
     <string name="status_upload_error">Ошибка загрузки: %1$s</string>
-    <string name="hc_unavailable">Health Connect недоступен. Установи или обнови приложение Health Connect из Play Store.</string>
     <string name="hc_update_required">Обнови Health Connect, затем открой приложение снова.</string>
 </resources>

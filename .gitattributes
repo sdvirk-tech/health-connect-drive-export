@@ -1,0 +1,5 @@
+build-install.ps1 text eol=crlf
+build-install.cmd text eol=crlf
+install-watch.ps1 text eol=crlf
+install-watch.cmd text eol=crlf
+gradlew.bat text eol=crlf

@@ -17,7 +17,11 @@ object JsonExporter {
 
     private val iso = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
-    fun writeZip(snapshot: HealthSnapshot, outFile: File): File {
+    fun writeZip(
+        snapshot: HealthSnapshot,
+        outFile: File,
+        extras: Map<String, ByteArray> = emptyMap(),
+    ): File {
         outFile.parentFile?.mkdirs()
         ZipOutputStream(outFile.outputStream().buffered()).use { zos ->
             zos.putNextEntry(ZipEntry("health_export.json"))
@@ -26,6 +30,11 @@ object JsonExporter {
             zos.putNextEntry(ZipEntry("summary.txt"))
             zos.write(snapshot.summaryLines().joinToString("\n").toByteArray(Charsets.UTF_8))
             zos.closeEntry()
+            extras.forEach { (name, bytes) ->
+                zos.putNextEntry(ZipEntry(name))
+                zos.write(bytes)
+                zos.closeEntry()
+            }
         }
         return outFile
     }
@@ -41,7 +50,7 @@ object JsonExporter {
             put("heartRate", JSONArray().apply {
                 s.heartRate.forEach { rec ->
                     rec.samples.forEach { sample ->
-                        put(JSONObject().put("time", inst(sample.time)).put("bpm", sample.beatsPerMinute))
+                        put(JSONObject().put("time", inst(sample.time)).put("bpm", sample.beatsPerMinute).put("origin", rec.metadata.dataOrigin.packageName))
                     }
                 }
             })
@@ -113,6 +122,19 @@ object JsonExporter {
                             .put("end", inst(r.endTime))
                             .put("type", r.exerciseType)
                             .put("title", r.title ?: "")
+                    )
+                }
+            })
+            put("watchSamples", JSONArray().apply {
+                s.watchSamples.forEach { sample ->
+                    put(
+                        JSONObject()
+                            .put("type", sample.type)
+                            .put("time", inst(java.time.Instant.ofEpochMilli(sample.timeEpochMs)))
+                            .put("value", sample.value)
+                            .put("value2", sample.value2 ?: JSONObject.NULL)
+                            .put("extra", sample.extra ?: "")
+                            .put("source", sample.source)
                     )
                 }
             })

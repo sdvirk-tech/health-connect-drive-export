@@ -15,8 +15,10 @@ import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
+import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import ru.sdvirk.healthsync.watch.WatchSample
 import java.time.Instant
 import kotlin.reflect.KClass
 
@@ -55,8 +57,13 @@ class HealthConnectReader(private val context: Context) {
     fun availability(): Int = HealthConnectClient.getSdkStatus(context)
 
     suspend fun readSince(start: Instant, end: Instant = Instant.now()): HealthSnapshot {
-        val hc = client ?: return HealthSnapshot.empty()
+        val hc = client ?: return HealthSnapshot.empty().copy(
+            rangeStart = start,
+            rangeEnd = end,
+            readErrors = listOf("Health Connect client is null"),
+        )
         val range = TimeRangeFilter.between(start, end)
+        val errors = ArrayList<String>()
 
         suspend fun <T : Record> read(clazz: KClass<T>): List<T> = try {
             val all = mutableListOf<T>()
@@ -74,7 +81,8 @@ class HealthConnectReader(private val context: Context) {
                 pageToken = page.pageToken
             } while (pageToken != null)
             all
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            errors += "${clazz.simpleName}: ${e.javaClass.simpleName}${e.message?.let { ": $it" } ?: ""}"
             emptyList()
         }
 
@@ -92,6 +100,125 @@ class HealthConnectReader(private val context: Context) {
             exportedAt = Instant.now(),
             rangeStart = start,
             rangeEnd = end,
+            readErrors = errors,
+            aggregateHints = aggregateHints(hc, range),
+        )
+    }
+
+    private suspend fun aggregateHints(
+        hc: HealthConnectClient,
+        range: TimeRangeFilter,
+    ): List<String> {
+        val lines = ArrayList<String>()
+        try {
+            val hr = hc.aggregate(
+                AggregateRequest(
+                    metrics = setOf(
+                        HeartRateRecord.BPM_AVG,
+                        HeartRateRecord.BPM_MIN,
+                        HeartRateRecord.BPM_MAX,
+                        HeartRateRecord.MEASUREMENTS_COUNT,
+                    ),
+                    timeRangeFilter = range,
+                )
+            )
+            val count = hr[HeartRateRecord.MEASUREMENTS_COUNT]
+            val avg = hr[HeartRateRecord.BPM_AVG]
+            val origins = hr.dataOrigins.joinToString { it.packageName }.ifBlank { "нет" }
+            lines += if (count == null || count == 0L) {
+                "агрегат пульса: 0 (Samsung не пишет HR в Health Connect)"
+            } else {
+                "агрегат пульса: $count изм., avg=$avg, источники=$origins"
+            }
+        } catch (e: Exception) {
+            lines += "агрегат пульса: ${e.javaClass.simpleName}"
+        }
+        try {
+            val st = hc.aggregate(
+                AggregateRequest(
+                    metrics = setOf(StepsRecord.COUNT_TOTAL),
+                    timeRangeFilter = range,
+                )
+            )
+            val steps = st[StepsRecord.COUNT_TOTAL]
+            val origins = st.dataOrigins.joinToString { it.packageName }.ifBlank { "нет" }
+            lines += if (steps == null || steps == 0L) {
+                "агрегат шагов: 0"
+            } else {
+                "агрегат шагов: $steps, источники=$origins"
+            }
+        } catch (e: Exception) {
+            lines += "агрегат шагов: ${e.javaClass.simpleName}"
+        }
+        try {
+            val sl = hc.aggregate(
+                AggregateRequest(
+                    metrics = setOf(SleepSessionRecord.SLEEP_DURATION_TOTAL),
+                    timeRangeFilter = range,
+                )
+            )
+            val dur = sl[SleepSessionRecord.SLEEP_DURATION_TOTAL]
+            lines += if (dur == null || dur.isZero) {
+                "агрегат сна: 0"
+            } else {
+                "агрегат сна: ${dur.toMinutes()} мин"
+            }
+        } catch (e: Exception) {
+            lines += "агрегат сна: ${e.javaClass.simpleName}"
+        }
+        return lines
+    }
+
+    suspend fun probeSince(start: Instant, end: Instant = Instant.now()): List<TypeProbe> {
+        val hc = client ?: return emptyList()
+        val granted = runCatching { hc.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
+        val range = TimeRangeFilter.between(start, end)
+
+        suspend fun <T : Record> readOrError(clazz: KClass<T>): Pair<List<T>, String?> = try {
+            val all = mutableListOf<T>()
+            var pageToken: String? = null
+            do {
+                val page = hc.readRecords(
+                    ReadRecordsRequest(
+                        recordType = clazz,
+                        timeRangeFilter = range,
+                        pageSize = 1000,
+                        pageToken = pageToken,
+                    )
+                )
+                all += page.records
+                pageToken = page.pageToken
+            } while (pageToken != null)
+            all to null
+        } catch (e: Exception) {
+            emptyList<T>() to (e.javaClass.simpleName + (e.message?.let { ": $it" } ?: ""))
+        }
+
+        suspend fun <T : Record> probe(
+            name: String,
+            clazz: KClass<T>,
+            countOf: (List<T>) -> Int = { it.size },
+        ): TypeProbe {
+            val perm = HealthPermission.getReadPermission(clazz)
+            if (perm !in granted) {
+                return TypeProbe(name, 0, emptyList(), null, granted = false)
+            }
+            val (recs, err) = readOrError(clazz)
+            val origins = recs.map { it.metadata.dataOrigin.packageName }.distinct().sorted()
+            return TypeProbe(name, countOf(recs), origins, err, granted = true)
+        }
+
+        return listOf(
+            probe("пульс", HeartRateRecord::class) { recs -> recs.sumOf { it.samples.size } },
+            probe("пульс покоя", RestingHeartRateRecord::class),
+            probe("HRV", HeartRateVariabilityRmssdRecord::class),
+            probe("сон", SleepSessionRecord::class),
+            probe("SpO2", OxygenSaturationRecord::class),
+            probe("давление", BloodPressureRecord::class),
+            probe("вес", WeightRecord::class),
+            probe("шаги", StepsRecord::class),
+            probe("дистанция", DistanceRecord::class),
+            probe("тренировки", ExerciseSessionRecord::class),
         )
     }
 }
@@ -110,6 +237,9 @@ data class HealthSnapshot(
     val exportedAt: Instant,
     val rangeStart: Instant,
     val rangeEnd: Instant,
+    val watchSamples: List<WatchSample> = emptyList(),
+    val readErrors: List<String> = emptyList(),
+    val aggregateHints: List<String> = emptyList(),
 ) {
     companion object {
         fun empty() = HealthSnapshot(
@@ -120,7 +250,7 @@ data class HealthSnapshot(
     }
 
     fun summaryLines(): List<String> = listOf(
-        "HR samples: ${heartRate.size}",
+        "HR samples: ${heartRate.sumOf { it.samples.size }}",
         "Resting HR: ${restingHeartRate.size}",
         "HRV: ${hrv.size}",
         "Sleep: ${sleep.size}",
@@ -130,5 +260,18 @@ data class HealthSnapshot(
         "Steps: ${steps.size}",
         "Distance: ${distance.size}",
         "Exercise: ${exercise.size}",
-    )
+        "Watch HR: ${watchSamples.count { it.type == WatchSample.HEART_RATE }}",
+        "Watch steps: ${watchSamples.count { it.type == WatchSample.STEPS }}",
+        "Watch steps daily: ${watchSamples.count { it.type == WatchSample.STEPS_DAILY }}",
+        "Watch calories: ${watchSamples.count { it.type == WatchSample.CALORIES }}",
+        "Watch distance: ${watchSamples.count { it.type == WatchSample.DISTANCE }}",
+        "Watch floors: ${watchSamples.count { it.type == WatchSample.FLOORS }}",
+        "Watch elevation: ${watchSamples.count { it.type == WatchSample.ELEVATION_GAIN }}",
+        "Watch activity: ${watchSamples.count { it.type == WatchSample.ACTIVITY }}",
+        "Watch sleep: ${watchSamples.count { it.type == WatchSample.SLEEP }}",
+        "Watch HRV: ${watchSamples.count { it.type == WatchSample.HRV }}",
+        "Watch SpO2: ${watchSamples.count { it.type == WatchSample.SPO2 }}",
+        "Watch BP: ${watchSamples.count { it.type == WatchSample.BLOOD_PRESSURE }}",
+        "Watch ECG: ${watchSamples.count { it.type == WatchSample.ECG }}",
+    ) + aggregateHints + readErrors.map { "HC error: $it" }
 }

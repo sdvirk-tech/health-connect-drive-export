@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.wear.widget.BoxInsetLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:boxedEdges="all">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Health Sync"
+                android:textStyle="bold"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="6dp"
+                android:paddingBottom="8dp"
+                android:textSize="13sp"
+                android:text="—" />
+
+            <Button
+                android:id="@+id/permissions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Разрешения" />
+
+            <Button
+                android:id="@+id/hc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="HC: сон/SpO2/BP/HRV" />
+
+            <Button
+                android:id="@+id/passive"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Все датчики (фон)" />
+
+            <Button
+                android:id="@+id/measure"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Замерить пульс" />
+
+            <Button
+                android:id="@+id/diagnose"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Почему пусто" />
+
+            <Button
+                android:id="@+id/send_log"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Лог на телефон" />
+
+            <Button
+                android:id="@+id/sync"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="На телефон" />
+        </LinearLayout>
+    </ScrollView>
+</androidx.wear.widget.BoxInsetLayout>
