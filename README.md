@@ -43,14 +43,12 @@ JDK 17 уже ставится. Если Gradle пишет `SDK location not fou
 APK уже собраны. На Galaxy Watch Ultra сначала **pair**, потом **connect** (два разных порта). Только часы, без Gradle:
 
 ```bat
-.\install-watch.cmd -Apk C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
+git fetch origin
+git checkout cursor/watch-vitals-export-8125
+.\install-watch.cmd -Apk C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk -Watch 192.168.2.142:44643
 ```
 
-Телефон + часы со сборкой:
-
-```bat
-.\build-install.cmd -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
-```
+Не копируй слова `ПОРТ_КОДА`. Если `adb devices` уже показывает часы как `device`, `-Pair` не нужен.
 
 На часах открой «Сопряжение по коду», оставь экран открытым. ПК и часы — одна Wi‑Fi сеть `192.168.2.x`. Телефон: USB + отладка.
 

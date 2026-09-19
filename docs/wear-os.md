@@ -30,4 +30,4 @@ Companion к телефону. Собирает показания и шлёт �
 
 `applicationId` часов: `ru.sdvirk.healthsync.wear`.
 
-Установка с ПК (без Gradle): `.\install-watch.cmd -Apk C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk -Pair IP:ПОРТ_КОДА -PairCode 123456 -Watch IP:ПОРТ_ПОДКЛЮЧЕНИЯ`. Подробности: [`docs/install.md`](install.md).
+Установка с ПК (без Gradle): сначала `git checkout cursor/watch-vitals-export-8125`, затем `.\install-watch.cmd -Apk C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk -Watch 192.168.2.142:44643`. Подробности: [`docs/install.md`](install.md).

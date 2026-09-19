@@ -10,7 +10,9 @@
 | `NativeCommandError` / `openjdk version "27"` | `java -version` пишет в stderr, а в скрипте стоял `Stop`. Это не «Java сломан». | `git pull` и снова `.\build-install.cmd`. |
 | `Изменение политики выполнения` | Ты запустил `Set-ExecutionPolicy`. Для `.cmd` это не нужно. | **Ctrl+C**. Дальше только `.\build-install.cmd`. Если уже спросило — одна буква `A` и Enter, не `{A}` и не `"a"`. |
 | `adb: no devices` / `device '192.168.2.142:36169' not found` | Wi‑Fi ADB на часах протух (порт меняется). `adb.exe` у тебя есть. | На часах выключи/включи беспроводную отладку, возьми **новый** IP:порт. |
-| `failed to connect to 192.168.2.142:…` | На Watch Ultra **два порта**. `connect` без `pair` не работает. | На часах: «Сопряжение по коду» → другой порт + 6 цифр. Затем `-Pair` и `-Watch`. |
+| `".\install-watch.cmd" не является командой` | Файл есть только в ветке `cursor/watch-vitals-export-8125`. `git pull` её скачал, но не переключил. Папка `HealthWear` — не этот репозиторий. | `git fetch origin` затем `git checkout cursor/watch-vitals-export-8125`. Проверка: `dir install-watch.cmd`. |
+| `pair ... ПОРТ_КОДА` / `protocol fault` | В команду вставили слова **ПОРТ_КОДА**, а не цифры с часов. | Порт сопряжения — только цифры, другой, чем `44643`. Если `adb devices` уже показывает `192.168.2.142:44643 device` — `pair` не нужен. |
+| `RFCX718KLEZ unauthorized` | Телефон не нажал Allow. На установку часов это не влияет. | На телефоне: разблокировать → **Разрешить отладку по USB**. |
 
 ```bat
 cd C:\IT\Cursor\health-connect-drive-export
@@ -27,33 +29,37 @@ git pull
 3. ПК и часы в одной сети `192.168.2.x`.
 
 ```bat
-.\build-install.cmd -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:36723
+.\build-install.cmd -Pair 192.168.2.142:37111 -PairCode 847291 -Watch 192.168.2.142:44643
 ```
+
+Цифры `37111` / `847291` — **пример**. Бери порт и код с экрана «Сопряжение по коду». `44643` — порт подключения с главного экрана беспроводной отладки (у тебя он уже работал). Не вставляй слова `ПОРТ_КОДА` и `ПОРТ_ПОДКЛЮЧЕНИЯ`.
 
 ### Только часы (готовая APK, без Gradle)
 
 Сборку не запускает. Ставит `dist\HealthSync-wear-0.3.0-debug.apk` **только на Galaxy Watch**.
 
 1. На часах: параметры разработчика → **Беспроводная отладка** вкл.
-2. На главном экране отладки скопируй **IP:порт подключения** (например `192.168.2.142:36723`).
-3. Открой **Сопряжение по коду** — другой порт и 6 цифр. Экран не закрывай.
-4. В `cmd` (не обязательно PowerShell):
+2. На главном экране отладки скопируй **IP:порт подключения** (у тебя уже было `192.168.2.142:44643`).
+3. Открой **Сопряжение по коду** — **другой** порт (не 44643) и 6 цифр. Экран не закрывай. Если часы уже `device` в `adb devices` — этот шаг не нужен.
+4. Скрипт лежит **не** в `HealthWear`. Сначала ветка:
 
 ```bat
 cd C:\IT\Cursor\health-connect-drive-export
-git pull
-.\install-watch.cmd -Apk C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
+git fetch origin
+git checkout cursor/watch-vitals-export-8125
+dir install-watch.cmd
+.\install-watch.cmd -Apk C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk -Watch 192.168.2.142:44643
 ```
 
-Те же шаги вручную, если скрипт не нужен (APK уже лежит в HealthWear):
+Если часы ещё не paired, добавь `-Pair 192.168.2.142:37111 -PairCode 847291` (цифры с экрана сопряжения, не слова).
+
+Те же шаги вручную (так у тебя уже получилось `Success`):
 
 ```bat
 set ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe
 set APK=C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk
-"%ADB%" pair 192.168.2.142:ПОРТ_КОДА 123456
-"%ADB%" connect 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
-"%ADB%" devices
-"%ADB%" -s 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ install -r "%APK%"
+"%ADB%" connect 192.168.2.142:44643
+"%ADB%" -s 192.168.2.142:44643 install -r "%APK%"
 ```
 
 Не пиши слово `IP` в адресе. Не ставь этот APK на телефон.
@@ -92,14 +98,14 @@ List of apks: C:\IT\Cursor\HealthWear2\app\build\intermediates\apk\debug\app-deb
 ```bat
 cd C:\IT\Cursor\health-connect-drive-export
 git fetch origin
-git checkout cursor/wear-os-heart-rate-8125
+git checkout cursor/watch-vitals-export-8125
 ```
 
 Если папки репозитория нет:
 
 ```bat
 cd C:\IT\Cursor
-git clone -b cursor/wear-os-heart-rate-8125 https://github.com/sdvirk-tech/health-connect-drive-export.git
+git clone -b cursor/watch-vitals-export-8125 https://github.com/sdvirk-tech/health-connect-drive-export.git
 ```
 
 Потом **File → Open** → `C:\IT\Cursor\health-connect-drive-export`  
