@@ -40,10 +40,16 @@ git pull
 
 JDK 17 уже ставится. Если Gradle пишет `SDK location not found` — снова `git pull` и `.\build-install.cmd`: скрипт пропишет `sdk.dir` из `%LOCALAPPDATA%\Android\Sdk`.
 
-APK уже собраны. На Galaxy Watch Ultra сначала **pair**, потом **connect** (два разных порта):
+APK уже собраны. На Galaxy Watch Ultra сначала **pair**, потом **connect** (два разных порта). Только часы, без Gradle:
 
 ```bat
-.\build-install.cmd -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:36723
+.\install-watch.cmd -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
+```
+
+Телефон + часы со сборкой:
+
+```bat
+.\build-install.cmd -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
 ```
 
 На часах открой «Сопряжение по коду», оставь экран открытым. ПК и часы — одна Wi‑Fi сеть `192.168.2.x`. Телефон: USB + отладка.

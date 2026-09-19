@@ -29,3 +29,5 @@ Companion к телефону. Собирает показания и шлёт �
 Затем на телефоне: **Папка для zip** → **Выгрузить сейчас**. Zip содержит `watchSamples` и записи Health Connect телефона.
 
 `applicationId` часов: `ru.sdvirk.healthsync.wear`.
+
+Установка с ПК (без Gradle): `.\install-watch.cmd -Pair IP:ПОРТ_КОДА -PairCode 123456 -Watch IP:ПОРТ_ПОДКЛЮЧЕНИЯ`. Подробности: [`docs/install.md`](install.md).

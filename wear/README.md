@@ -16,4 +16,4 @@
 
 Телефон — модуль `:app` в корне того же репозитория.
 
-Сборка: [`docs/install.md`](../docs/install.md). Из корня репозитория: `.\build-install.cmd`.
+Сборка: [`docs/install.md`](../docs/install.md). Из корня репозитория: `.\install-watch.cmd` (готовая Wear-APK) или `.\build-install.cmd`.

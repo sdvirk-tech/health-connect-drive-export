@@ -30,6 +30,33 @@ git pull
 .\build-install.cmd -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:36723
 ```
 
+### Только часы (готовая APK, без Gradle)
+
+Сборку не запускает. Ставит `dist\HealthSync-wear-0.3.0-debug.apk` **только на Galaxy Watch**.
+
+1. На часах: параметры разработчика → **Беспроводная отладка** вкл.
+2. На главном экране отладки скопируй **IP:порт подключения** (например `192.168.2.142:36723`).
+3. Открой **Сопряжение по коду** — другой порт и 6 цифр. Экран не закрывай.
+4. В `cmd` (не обязательно PowerShell):
+
+```bat
+cd C:\IT\Cursor\health-connect-drive-export
+git pull
+.\install-watch.cmd -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
+```
+
+Те же шаги вручную, если скрипт не нужен:
+
+```bat
+set ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe
+"%ADB%" pair 192.168.2.142:ПОРТ_КОДА 123456
+"%ADB%" connect 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
+"%ADB%" devices
+"%ADB%" -s 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ install -r dist\HealthSync-wear-0.3.0-debug.apk
+```
+
+Не пиши слово `IP` в адресе. Не ставь этот APK на телефон.
+
 Не задавай вручную:
 
 ```powershell
