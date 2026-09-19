@@ -10,6 +10,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.concurrent.futures.await
 import androidx.core.content.ContextCompat
+import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABLE
+import androidx.health.connect.client.PermissionController
 import androidx.health.services.client.HealthServices
 import androidx.health.services.client.MeasureCallback
 import androidx.health.services.client.data.Availability
@@ -32,9 +34,19 @@ class WearMainActivity : ComponentActivity() {
     private var measureJob: Job? = null
     private var measureCallback: MeasureCallback? = null
 
-    private val requestPermissions = registerForActivityResult(
+    private val requestSensorPermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { refreshStatus() }
+
+    private val requestHcPermissions = registerForActivityResult(
+        PermissionController.createRequestPermissionResultContract()
+    ) { granted ->
+        status.text = "HC выдано: ${granted.size}/${WatchHealthConnect.permissions.size}"
+        lifecycleScope.launch {
+            delay(600)
+            refreshStatus()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,7 +54,32 @@ class WearMainActivity : ComponentActivity() {
         status = findViewById(R.id.status)
 
         findViewById<Button>(R.id.permissions).setOnClickListener {
-            requestPermissions.launch(neededPermissions())
+            requestSensorPermissions.launch(neededSensorPermissions())
+        }
+        findViewById<Button>(R.id.hc).setOnClickListener {
+            lifecycleScope.launch {
+                if (WatchHealthConnect.client(this@WearMainActivity) == null) {
+                    status.text = WatchHealthConnect.hcUnavailable(WatchHealthConnect.availability(this@WearMainActivity))
+                    return@launch
+                }
+                status.text = "Читаю Health Connect на часах…"
+                try {
+                    val granted = WatchHealthConnect.client(this@WearMainActivity)
+                        ?.permissionController?.getGrantedPermissions().orEmpty()
+                    if (!granted.containsAll(WatchHealthConnect.permissions)) {
+                        requestHcPermissions.launch(WatchHealthConnect.permissions)
+                        return@launch
+                    }
+                    val (samples, note) = withContext(Dispatchers.IO) {
+                        WatchHealthConnect.pull(this@WearMainActivity)
+                    }
+                    WatchHealth.store(this@WearMainActivity).append(samples)
+                    status.text = note
+                    if (samples.isNotEmpty()) WatchPhoneSync.enqueue(this@WearMainActivity)
+                } catch (e: Exception) {
+                    status.text = e.message ?: e.javaClass.simpleName
+                }
+            }
         }
         findViewById<Button>(R.id.passive).setOnClickListener {
             lifecycleScope.launch {
@@ -53,10 +90,10 @@ class WearMainActivity : ComponentActivity() {
                     }
                     if (WatchHealth.isPassiveEnabled(this@WearMainActivity)) {
                         WatchHealth.unregisterPassive(this@WearMainActivity)
-                        status.text = "Фоновый пульс выключен"
+                        status.text = "Фон выключен"
                     } else {
                         val types = WatchHealth.registerPassive(this@WearMainActivity)
-                        status.text = "Фон включён (${types.size} типов)"
+                        status.text = "Фон включён (${types.size} типов HS)"
                     }
                 } catch (e: Exception) {
                     status.text = e.message ?: e.javaClass.simpleName
@@ -66,6 +103,9 @@ class WearMainActivity : ComponentActivity() {
             }
         }
         findViewById<Button>(R.id.measure).setOnClickListener { startMeasure() }
+        findViewById<Button>(R.id.diagnose).setOnClickListener {
+            lifecycleScope.launch { status.text = diagnose() }
+        }
         findViewById<Button>(R.id.sync).setOnClickListener {
             lifecycleScope.launch {
                 status.text = "Отправляю на телефон…"
@@ -73,12 +113,10 @@ class WearMainActivity : ComponentActivity() {
                     val n = withContext(Dispatchers.IO) {
                         WatchPhoneSync.syncNow(this@WearMainActivity)
                     }
-                    status.text = if (n == 0) "Нечего слать" else "Отправлено проб: $n"
+                    status.text = if (n == 0) "Нечего слать — сначала замер / HC / фон" else "Отправлено проб: $n"
                 } catch (e: Exception) {
                     status.text = e.message ?: e.javaClass.simpleName
                 }
-                delay(1200)
-                refreshStatus()
             }
         }
         refreshStatus()
@@ -95,18 +133,49 @@ class WearMainActivity : ComponentActivity() {
     }
 
     private fun refreshStatus() {
-        val last = WatchHealth.store(this).lastHeartRate()
-        val bpm = last?.let { "${it.value.toInt()} bpm" } ?: "нет"
-        val n = WatchHealth.store(this).count()
+        val counts = WatchHealth.store(this).countsByType()
+        fun n(type: String) = counts[type] ?: 0
         val sensors = if (hasBodySensors()) "датчики OK" else "нет датчиков"
         val passive = if (WatchHealth.isPassiveEnabled(this)) "фон вкл" else "фон выкл"
-        status.text = "Пульс: $bpm\nПроб: $n · $passive\n$sensors"
+        val lastHr = WatchHealth.store(this).lastHeartRate()?.value?.toInt()?.let { "$it bpm" } ?: "нет"
+        status.text = buildString {
+            append("Пульс: $lastHr · $passive\n")
+            append("HS/HC проб: HR ${n(WatchSample.HEART_RATE)}")
+            append(" HRV ${n(WatchSample.HRV)}")
+            append(" SpO2 ${n(WatchSample.SPO2)}")
+            append(" сон ${n(WatchSample.SLEEP)}")
+            append(" BP ${n(WatchSample.BLOOD_PRESSURE)}")
+            append(" ECG ${n(WatchSample.ECG)}\n")
+            append(sensors)
+        }
+    }
+
+    private suspend fun diagnose(): String {
+        val counts = WatchHealth.store(this).countsByType()
+        val hs = WatchHealth.capabilitiesReport(this)
+        val hcSdk = WatchHealthConnect.availability(this)
+        val hcClient = WatchHealthConnect.client(this)
+        val hcGranted = hcClient?.permissionController?.getGrantedPermissions()?.size ?: 0
+        return buildString {
+            appendLine(hs)
+            val hcLine = if (hcSdk == SDK_AVAILABLE) {
+                "Health Connect: есть, разрешений $hcGranted/${WatchHealthConnect.permissions.size}"
+            } else {
+                "Health Connect: " + WatchHealthConnect.hcUnavailable(hcSdk)
+            }
+            appendLine(hcLine)
+            appendLine("Локально: $counts")
+            appendLine("Пульс: датчик часов (Health Services). Надень часы, «Замерить пульс» или фон.")
+            appendLine("HRV/сон/SpO2/давление: Samsung Health должен ПИСАТЬ в Health Connect, затем «HC: сон/SpO2/BP/HRV».")
+            appendLine("ЭКГ: Samsung Health Monitor, в Health Connect обычно нет. Health Services ЭКГ не отдаёт.")
+            appendLine("Потом «На телефон» — пробы уходят в Health Sync на телефоне и в zip.")
+        }
     }
 
     private fun startMeasure() {
         if (!hasBodySensors()) {
             status.text = "Сначала выдай разрешение на датчики"
-            requestPermissions.launch(neededPermissions())
+            requestSensorPermissions.launch(neededSensorPermissions())
             return
         }
         stopMeasure()
@@ -170,7 +239,7 @@ class WearMainActivity : ComponentActivity() {
         }
     }
 
-    private fun neededPermissions(): Array<String> = buildList {
+    private fun neededSensorPermissions(): Array<String> = buildList {
         add(Manifest.permission.BODY_SENSORS)
         if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.BODY_SENSORS_BACKGROUND)
         add(Manifest.permission.ACTIVITY_RECOGNITION)

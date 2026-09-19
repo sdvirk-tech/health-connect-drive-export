@@ -34,8 +34,15 @@ class WatchSampleStore(private val file: File) {
     fun count(): Int = readAll().size
 
     @Synchronized
-    fun lastHeartRate(): WatchSample? =
-        readAll().asReversed().firstOrNull { it.type == WatchSample.HEART_RATE }
+    fun lastHeartRate(): WatchSample? = lastOf(WatchSample.HEART_RATE)
+
+    @Synchronized
+    fun lastOf(type: String): WatchSample? =
+        readAll().asReversed().firstOrNull { it.type == type }
+
+    @Synchronized
+    fun countsByType(): Map<String, Int> =
+        readAll().groupingBy { it.type }.eachCount()
 
     @Synchronized
     fun pruneOlderThan(epochMs: Long) {
@@ -55,7 +62,8 @@ class WatchSampleStore(private val file: File) {
         return file.readLines(Charsets.UTF_8).mapNotNull { WatchSyncCodec.fromLine(it) }
     }
 
-    private fun key(sample: WatchSample) = sample.type + ":" + sample.timeEpochMs
+    private fun key(sample: WatchSample) =
+        sample.type + ":" + sample.timeEpochMs + ":" + (sample.extra ?: "") + ":" + (sample.value2 ?: "")
 
     companion object {
         fun at(dir: File): WatchSampleStore = WatchSampleStore(File(dir, WatchSync.STORE_FILE))

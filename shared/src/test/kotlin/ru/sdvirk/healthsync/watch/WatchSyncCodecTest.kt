@@ -3,7 +3,6 @@ package ru.sdvirk.healthsync.watch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 import kotlin.io.path.createTempDirectory
 
 class WatchSyncCodecTest {
@@ -12,6 +11,12 @@ class WatchSyncCodecTest {
     fun roundTripLineAndMessage() {
         val sample = WatchSample(WatchSample.HEART_RATE, 1_725_000_000_000L, 72.5)
         assertEquals(sample, WatchSyncCodec.fromLine(WatchSyncCodec.toLine(sample)))
+        val extra = WatchSample(WatchSample.BLOOD_PRESSURE, 3_000L, 120.0, 80.0, "mmHg", WatchSample.SOURCE_HC)
+        assertEquals(extra, WatchSyncCodec.fromLine(WatchSyncCodec.toLine(extra)))
+        val old = WatchSyncCodec.fromLine("{\"type\":\"heart_rate\",\"t\":1,\"v\":72.5}")
+        assertEquals(WatchSample.HEART_RATE, old?.type)
+        assertEquals(72.5, old?.value ?: 0.0, 0.0)
+        assertEquals(WatchSample.SOURCE_SENSOR, old?.source)
         val json = WatchSyncCodec.encodeMessage(listOf(sample, sample.copy(timeEpochMs = 1_725_000_001_000L)))
         val decoded = WatchSyncCodec.decodeMessage(json)
         assertEquals(2, decoded.size)

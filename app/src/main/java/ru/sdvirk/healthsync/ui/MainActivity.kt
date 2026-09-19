@@ -1,5 +1,7 @@
 package ru.sdvirk.healthsync.ui
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -24,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import kotlinx.coroutines.Dispatchers
@@ -32,9 +35,11 @@ import kotlinx.coroutines.withContext
 import ru.sdvirk.healthsync.R
 import ru.sdvirk.healthsync.drive.DriveUploader
 import ru.sdvirk.healthsync.export.ExportFileNames
+import ru.sdvirk.healthsync.export.FolderExport
 import ru.sdvirk.healthsync.export.JsonExporter
 import ru.sdvirk.healthsync.export.watchSampleCount
 import ru.sdvirk.healthsync.export.withWatchSamples
+import ru.sdvirk.healthsync.health.DataProbe
 import ru.sdvirk.healthsync.health.HealthConnectReader
 import ru.sdvirk.healthsync.worker.DailyExportWorker
 import java.io.File
@@ -57,6 +62,21 @@ class MainActivity : ComponentActivity() {
             },
             Toast.LENGTH_SHORT
         ).show()
+    }
+
+    private val pickFolder = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        if (uri == null) return@registerForActivityResult
+        contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+        getSharedPreferences(DailyExportWorker.PREFS, MODE_PRIVATE)
+            .edit()
+            .putString(DailyExportWorker.KEY_EXPORT_TREE, uri.toString())
+            .apply()
+        Toast.makeText(this, getString(R.string.folder_saved), Toast.LENGTH_SHORT).show()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -120,6 +140,23 @@ class MainActivity : ComponentActivity() {
                         ) { Text(stringResource(R.string.request_permissions)) }
 
                         Button(
+                            onClick = { pickFolder.launch(null) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(stringResource(R.string.choose_folder)) }
+
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    status = getString(R.string.status_probe)
+                                    status = withContext(Dispatchers.IO) {
+                                        DataProbe.run(this@MainActivity, reader).asText()
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(stringResource(R.string.why_empty)) }
+
+                        Button(
                             onClick = {
                                 scope.launch {
                                     status = getString(R.string.status_reading)
@@ -135,6 +172,15 @@ class MainActivity : ComponentActivity() {
                                     val out = File(cacheDir, fileName)
                                     JsonExporter.writeZip(snap, out)
                                     status = snap.summaryLines().joinToString(" · ")
+                                    val tree = prefs.getString(DailyExportWorker.KEY_EXPORT_TREE, "") ?: ""
+                                    if (tree.isNotBlank()) {
+                                        runCatching {
+                                            FolderExport.copyZip(this@MainActivity, out, Uri.parse(tree))
+                                            status += "\n${getString(R.string.status_folder_copied)}"
+                                        }.onFailure {
+                                            status += "\n${it.message ?: ""}"
+                                        }
+                                    }
                                     val url = prefs.getString(DailyExportWorker.KEY_UPLOAD_URL, "") ?: ""
                                     if (url.isBlank()) {
                                         status += "\n${getString(R.string.status_local_zip, out.absolutePath)}"

@@ -41,7 +41,7 @@ object JsonExporter {
             put("heartRate", JSONArray().apply {
                 s.heartRate.forEach { rec ->
                     rec.samples.forEach { sample ->
-                        put(JSONObject().put("time", inst(sample.time)).put("bpm", sample.beatsPerMinute))
+                        put(JSONObject().put("time", inst(sample.time)).put("bpm", sample.beatsPerMinute).put("origin", rec.metadata.dataOrigin.packageName))
                     }
                 }
             })
@@ -123,7 +123,9 @@ object JsonExporter {
                             .put("type", sample.type)
                             .put("time", inst(java.time.Instant.ofEpochMilli(sample.timeEpochMs)))
                             .put("value", sample.value)
-                            .put("source", "wear")
+                            .put("value2", sample.value2 ?: JSONObject.NULL)
+                            .put("extra", sample.extra ?: "")
+                            .put("source", sample.source)
                     )
                 }
             })

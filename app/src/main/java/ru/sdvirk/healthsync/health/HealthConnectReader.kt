@@ -95,6 +95,59 @@ class HealthConnectReader(private val context: Context) {
             rangeEnd = end,
         )
     }
+
+    suspend fun probeSince(start: Instant, end: Instant = Instant.now()): List<TypeProbe> {
+        val hc = client ?: return emptyList()
+        val granted = runCatching { hc.permissionController.getGrantedPermissions() }.getOrDefault(emptySet())
+        val range = TimeRangeFilter.between(start, end)
+
+        suspend fun <T : Record> readOrError(clazz: KClass<T>): Pair<List<T>, String?> = try {
+            val all = mutableListOf<T>()
+            var pageToken: String? = null
+            do {
+                val page = hc.readRecords(
+                    ReadRecordsRequest(
+                        recordType = clazz,
+                        timeRangeFilter = range,
+                        pageSize = 1000,
+                        pageToken = pageToken,
+                    )
+                )
+                all += page.records
+                pageToken = page.pageToken
+            } while (pageToken != null)
+            all to null
+        } catch (e: Exception) {
+            emptyList<T>() to (e.javaClass.simpleName + (e.message?.let { ": $it" } ?: ""))
+        }
+
+        suspend fun <T : Record> probe(
+            name: String,
+            clazz: KClass<T>,
+            countOf: (List<T>) -> Int = { it.size },
+        ): TypeProbe {
+            val perm = HealthPermission.getReadPermission(clazz)
+            if (perm !in granted) {
+                return TypeProbe(name, 0, emptyList(), null, granted = false)
+            }
+            val (recs, err) = readOrError(clazz)
+            val origins = recs.map { it.metadata.dataOrigin.packageName }.distinct().sorted()
+            return TypeProbe(name, countOf(recs), origins, err, granted = true)
+        }
+
+        return listOf(
+            probe("пульс", HeartRateRecord::class) { recs -> recs.sumOf { it.samples.size } },
+            probe("пульс покоя", RestingHeartRateRecord::class),
+            probe("HRV", HeartRateVariabilityRmssdRecord::class),
+            probe("сон", SleepSessionRecord::class),
+            probe("SpO2", OxygenSaturationRecord::class),
+            probe("давление", BloodPressureRecord::class),
+            probe("вес", WeightRecord::class),
+            probe("шаги", StepsRecord::class),
+            probe("дистанция", DistanceRecord::class),
+            probe("тренировки", ExerciseSessionRecord::class),
+        )
+    }
 }
 
 data class HealthSnapshot(
@@ -122,7 +175,7 @@ data class HealthSnapshot(
     }
 
     fun summaryLines(): List<String> = listOf(
-        "HR samples: ${heartRate.size}",
+        "HR samples: ${heartRate.sumOf { it.samples.size }}",
         "Resting HR: ${restingHeartRate.size}",
         "HRV: ${hrv.size}",
         "Sleep: ${sleep.size}",
@@ -133,6 +186,11 @@ data class HealthSnapshot(
         "Distance: ${distance.size}",
         "Exercise: ${exercise.size}",
         "Watch HR: ${watchSamples.count { it.type == WatchSample.HEART_RATE }}",
+        "Watch HRV: ${watchSamples.count { it.type == WatchSample.HRV }}",
+        "Watch SpO2: ${watchSamples.count { it.type == WatchSample.SPO2 }}",
+        "Watch sleep: ${watchSamples.count { it.type == WatchSample.SLEEP }}",
+        "Watch BP: ${watchSamples.count { it.type == WatchSample.BLOOD_PRESSURE }}",
+        "Watch ECG: ${watchSamples.count { it.type == WatchSample.ECG }}",
         "Watch steps: ${watchSamples.count { it.type == WatchSample.STEPS }}",
     )
 }

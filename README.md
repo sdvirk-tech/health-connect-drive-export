@@ -59,9 +59,17 @@ APK уже собраны. На Galaxy Watch Ultra сначала **pair**, по
 3. Дождись Sync Gradle.
 4. Run **app** на телефоне. Run **wear** на часах.
 
-## Часы: пульс напрямую (Wear OS)
+## Часы: датчики + Health Connect (Wear OS)
 
-Samsung Health часто **не пишет пульс** в Health Connect. Тогда телефонный zip пустой по HR. Модуль `:wear` снимает пульс (и шаги, если Health Services их отдаёт) с датчика часов и передаёт на телефон по Wear Data Layer.
+Samsung Health часто **не пишет** пульс/HRV/сон/SpO₂/давление в Health Connect на телефоне. Модуль `:wear`:
+
+- живой **пульс** (и шаги) с датчика через Health Services;
+- **HRV, сон, SpO₂, давление** — чтение Health Connect **на часах**, если Samsung туда пишет;
+- всё уходит на телефон в zip (`watchSamples`) и в выбранную папку.
+
+**ЭКГ** Samsung Health Monitor не отдаёт в Health Connect 1.1 и не виден через Health Services.
+
+На телефоне кнопка **«Почему нет данных»** показывает: разрешения есть, а записей нет (Samsung не пишет), или часы ещё не прислали пробы.
 
 `applicationId` часов: `ru.sdvirk.healthsync.wear` (телефонный `ru.sdvirk.healthsync` не меняется).
 

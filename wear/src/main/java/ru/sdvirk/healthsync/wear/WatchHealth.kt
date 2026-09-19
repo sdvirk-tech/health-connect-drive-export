@@ -7,6 +7,7 @@ import androidx.health.services.client.HealthServices
 import androidx.health.services.client.PassiveListenerService
 import androidx.health.services.client.data.DataPointContainer
 import androidx.health.services.client.data.DataType
+import androidx.health.services.client.data.DeltaDataType
 import androidx.health.services.client.data.IntervalDataPoint
 import androidx.health.services.client.data.PassiveListenerConfig
 import androidx.health.services.client.data.SampleDataPoint
@@ -45,15 +46,76 @@ object WatchHealth {
                 )
             }
         }
+        appendOptionalSamples(container, boot, out)
         return out
+    }
+
+    private fun appendOptionalSamples(
+        container: DataPointContainer,
+        boot: Instant,
+        out: MutableList<WatchSample>,
+    ) {
+        optionalSampleType("OXYGEN_SATURATION", WatchSample.SPO2, 50.0..100.0, container, boot, out)
+        optionalSampleType("HEART_RATE_VARIABILITY_RMSSD", WatchSample.HRV, 1.0..400.0, container, boot, out)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun optionalSampleType(
+        field: String,
+        sampleType: String,
+        range: ClosedFloatingPointRange<Double>,
+        container: DataPointContainer,
+        boot: Instant,
+        out: MutableList<WatchSample>,
+    ) {
+        val dt = optionalDataType(field) as? DeltaDataType<Double, SampleDataPoint<Double>> ?: return
+        runCatching {
+            container.getData(dt).forEach { point ->
+                val v = point.value
+                if (v in range) {
+                    out += WatchSample(
+                        type = sampleType,
+                        timeEpochMs = sampleInstant(point, boot).toEpochMilli(),
+                        value = v,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun optionalDataType(field: String): DataType<*, *>? = try {
+        DataType::class.java.getField(field).get(null) as DataType<*, *>
+    } catch (_: Exception) {
+        null
     }
 
     suspend fun supportedPassiveTypes(context: Context): Set<DataType<*, *>> {
         val caps = HealthServices.getClient(context).passiveMonitoringClient
             .getCapabilitiesAsync()
             .await()
-        val wanted = listOf<DataType<*, *>>(DataType.HEART_RATE_BPM, DataType.STEPS)
+        val wanted = buildList {
+            add(DataType.HEART_RATE_BPM)
+            add(DataType.STEPS)
+            optionalDataType("OXYGEN_SATURATION")?.let { add(it) }
+            optionalDataType("HEART_RATE_VARIABILITY_RMSSD")?.let { add(it) }
+        }
         return wanted.filter { it in caps.supportedDataTypesPassiveMonitoring }.toSet()
+    }
+
+    suspend fun capabilitiesReport(context: Context): String {
+        val hs = runCatching {
+            val caps = HealthServices.getClient(context).passiveMonitoringClient
+                .getCapabilitiesAsync()
+                .await()
+            val names = caps.supportedDataTypesPassiveMonitoring.map { it.toString() }.sorted()
+            "Health Services фон: " + if (names.isEmpty()) "пусто" else names.joinToString()
+        }.getOrElse { "Health Services: ${it.javaClass.simpleName} ${it.message ?: ""}" }
+        val measure = runCatching {
+            val caps = HealthServices.getClient(context).measureClient.getCapabilitiesAsync().await()
+            val names = caps.supportedDataTypes.map { it.toString() }.sorted()
+            "Health Services замер: " + if (names.isEmpty()) "пусто" else names.joinToString()
+        }.getOrElse { "Замер: ${it.javaClass.simpleName}" }
+        return "$hs\n$measure"
     }
 
     suspend fun registerPassive(context: Context): Set<DataType<*, *>> {

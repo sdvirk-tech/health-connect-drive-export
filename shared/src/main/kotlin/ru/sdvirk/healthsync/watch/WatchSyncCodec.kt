@@ -2,9 +2,16 @@ package ru.sdvirk.healthsync.watch
 
 object WatchSyncCodec {
 
-    fun toLine(sample: WatchSample): String =
-        "{\"type\":\"" + escape(sample.type) + "\",\"t\":" + sample.timeEpochMs +
-            ",\"v\":" + sample.value + "}"
+    fun toLine(sample: WatchSample): String = buildString {
+        append("{\"type\":\"").append(escape(sample.type)).append("\",\"t\":")
+        append(sample.timeEpochMs).append(",\"v\":").append(sample.value)
+        sample.value2?.let { append(",\"v2\":").append(it) }
+        sample.extra?.let { append(",\"x\":\"").append(escape(it)).append('"') }
+        if (sample.source.isNotEmpty()) {
+            append(",\"src\":\"").append(escape(sample.source)).append('"')
+        }
+        append('}')
+    }
 
     fun fromLine(line: String): WatchSample? {
         val trimmed = line.trim()
@@ -12,7 +19,14 @@ object WatchSyncCodec {
         val type = stringField(trimmed, "type") ?: return null
         val t = longField(trimmed, "t") ?: return null
         val v = doubleField(trimmed, "v") ?: return null
-        return WatchSample(type = type, timeEpochMs = t, value = v)
+        return WatchSample(
+            type = type,
+            timeEpochMs = t,
+            value = v,
+            value2 = doubleField(trimmed, "v2"),
+            extra = stringField(trimmed, "x"),
+            source = stringField(trimmed, "src") ?: WatchSample.SOURCE_SENSOR,
+        )
     }
 
     fun encodeMessage(samples: List<WatchSample>): String = buildString {

@@ -11,8 +11,8 @@ android {
         applicationId = "ru.sdvirk.healthsync.wear"
         minSdk = 30
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.2.0"
+        versionCode = 2
+        versionName = "0.3.0"
     }
 
     buildTypes {
@@ -37,6 +37,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.wear:wear:1.3.0")
     implementation("androidx.health:health-services-client:1.1.0-rc02")
+    implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("androidx.concurrent:concurrent-futures-ktx:1.2.0")
     implementation("com.google.guava:guava:33.3.1-android")
     implementation("androidx.work:work-runtime-ktx:2.10.0")

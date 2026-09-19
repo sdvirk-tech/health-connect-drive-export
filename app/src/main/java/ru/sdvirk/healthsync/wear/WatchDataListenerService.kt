@@ -1,5 +1,6 @@
 package ru.sdvirk.healthsync.wear
 
+import android.content.Context
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import ru.sdvirk.healthsync.watch.WatchSampleStore
@@ -15,5 +16,9 @@ class WatchDataListenerService : WearableListenerService() {
         val store = WatchSampleStore.at(filesDir)
         store.append(samples)
         store.pruneOlderThan(System.currentTimeMillis() - 90L * 24 * 60 * 60 * 1000)
+        getSharedPreferences(WatchSync.PREFS_PHONE, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(WatchSync.KEY_LAST_WATCH_MSG_MS, System.currentTimeMillis())
+            .apply()
     }
 }

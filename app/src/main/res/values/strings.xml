@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Health Sync</string>
-    <string name="intro">Samsung Health → Health Connect → zip в Drive. Если пульс с часов не доходит до Health Connect — поставь Health Sync Watch и снимай показания напрямую с Galaxy Watch.</string>
-    <string name="tip_samsung">В Samsung Health: Настройки → Health Connect (или «Подключённые сервисы») → разреши запись тех же типов: пульс, пульс покоя, HRV, сон, SpO₂, давление, вес, шаги, дистанция, тренировки. Затем в этом приложении нажми «Запросить разрешения Health Connect».</string>
-    <string name="tip_watch">Часы (Galaxy Watch 4+): APK модуля wear ставь только на часы, не на телефон (иначе ошибка MISSING_SHARED_LIBRARY). Как собрать и поставить: docs/install.md. На часах: датчики «всегда», «Фон: пульс», «Замерить сейчас».</string>
+    <string name="intro">Часы → телефон → zip в выбранную папку (и опционально Apps Script). Пульс с датчика часов; сон, HRV, SpO₂, давление — из Health Connect, если Samsung Health туда пишет.</string>
+    <string name="tip_samsung">Разрешения в этом приложении только ЧИТАЮТ Health Connect. Если типы пустые — Samsung Health не пишет: Настройки → Health Connect → разреши ЗАПИСЬ пульса, HRV, сна, SpO₂, давления. Давление/ЭКГ сначала в Samsung Health Monitor.</string>
+    <string name="tip_watch">На часах Health Sync Watch: «Разрешения», фон датчики, «Замерить пульс», «HC: сон/SpO2/BP/HRV», «На телефон». Wear-APK только на часы. ЭКГ Health Services/HC не отдают.</string>
+    <string name="choose_folder">Папка для zip</string>
+    <string name="folder_saved">Папка сохранена. Выгрузка скопирует zip туда.</string>
+    <string name="status_folder_copied">Zip скопирован в выбранную папку</string>
+    <string name="why_empty">Почему нет данных</string>
+    <string name="status_probe">Проверяю разрешения и источники…</string>
     <string name="status_watch_needed">С часов пока нет проб. Поставь Health Sync Watch, если HR samples: 0.</string>
     <string name="status_watch_samples">С часов на телефоне: %1$d проб</string>
     <string name="export_now">Выгрузить сейчас</string>
