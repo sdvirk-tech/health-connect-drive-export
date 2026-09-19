@@ -51,9 +51,8 @@ import ru.sdvirk.healthsync.health.DataProbe
 import ru.sdvirk.healthsync.health.HcSettings
 import ru.sdvirk.healthsync.health.HealthConnectReader
 import ru.sdvirk.healthsync.link.BluetoothPerms
-import ru.sdvirk.healthsync.link.PhoneLogServer
 import ru.sdvirk.healthsync.link.WatchLinkService
-import ru.sdvirk.healthsync.watch.LanAddresses
+import ru.sdvirk.healthsync.watch.WatchSampleStore
 import ru.sdvirk.healthsync.wear.PhoneIngest
 import ru.sdvirk.healthsync.wear.WatchDiagStore
 import ru.sdvirk.healthsync.worker.DailyExportWorker
@@ -156,8 +155,16 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Text("Health Sync → Drive", style = MaterialTheme.typography.headlineSmall)
                         Text(
-                            PhoneIngest.bluetoothLine(this@MainActivity) +
-                                ". Обмен с часами идёт по Bluetooth постоянно. Wi-Fi запасной: ${PhoneLogServer.localIpv4() ?: "нет IPv4"} (${LanAddresses.allIpv4Summary()}).",
+                            buildString {
+                                append(PhoneIngest.bluetoothLine(this@MainActivity))
+                                val hr = WatchSampleStore.at(this@MainActivity.filesDir).lastHeartRate()
+                                if (hr != null) {
+                                    append(" · пульс с часов ${hr.value.toInt()} bpm")
+                                } else {
+                                    append(" · пульса с часов ещё нет")
+                                }
+                                append(". Пульс часов НЕ в Health Connect — только в Health Sync.")
+                            },
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(stringResource(R.string.intro))

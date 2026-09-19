@@ -52,9 +52,23 @@ object WatchPhoneSync {
         val errors = ArrayList<String>()
         val json = WatchSyncCodec.encodeMessage(pending)
 
+        val rfcomm = runCatching {
+            if (!WatchRfcomm.isConnected()) WatchRfcomm.ensureConnected(app)
+            if (!WatchRfcomm.isConnected()) error(WatchRfcomm.lastStatus)
+            for (chunk in WatchSyncCodec.chunk(pending, WatchSync.NEARBY_MAX_BYTES)) {
+                val body = chunk.toString(Charsets.UTF_8)
+                if (!WatchRfcomm.sendSamples(body)) error("Bluetooth RFCOMM не отправил пробы")
+            }
+            WatchRfcomm.lastStatus
+        }
+        if (rfcomm.isSuccess) {
+            markSynced(prefs, store, from, pending)
+            putDataLayer(app, WatchSync.PATH_SAMPLES, "json", json)
+            return pending.size
+        }
+        errors += "RFCOMM: " + (rfcomm.exceptionOrNull()?.message ?: "fail")
+
         val nearby = runCatching {
-            WatchBtNearby.start(app)
-            if (!WatchBtNearby.isConnected()) WatchBtNearby.waitUntilConnected(6_000)
             if (!WatchBtNearby.isConnected()) error(WatchBtNearby.lastStatus)
             for (chunk in WatchSyncCodec.chunk(pending, WatchSync.NEARBY_MAX_BYTES)) {
                 val body = chunk.toString(Charsets.UTF_8)
@@ -113,9 +127,19 @@ object WatchPhoneSync {
         }
         val errors = ArrayList<String>()
 
+        val rfcomm = runCatching {
+            if (!WatchRfcomm.isConnected()) WatchRfcomm.ensureConnected(app)
+            if (!WatchRfcomm.sendDiag(payload)) error(WatchRfcomm.lastStatus)
+            WatchRfcomm.lastStatus
+        }
+        if (rfcomm.isSuccess) {
+            putDataLayer(app, WatchSync.PATH_DIAG, "text", payload)
+            return rfcomm.getOrThrow()
+        }
+        errors += "RFCOMM: " + (rfcomm.exceptionOrNull()?.message ?: "fail")
+
         val nearby = runCatching {
-            WatchBtNearby.start(app)
-            if (!WatchBtNearby.isConnected()) WatchBtNearby.waitUntilConnected(8_000)
+            if (!WatchBtNearby.isConnected()) error(WatchBtNearby.lastStatus)
             if (!WatchBtNearby.sendDiag(payload)) error(WatchBtNearby.lastStatus)
             "Bluetooth Nearby"
         }
@@ -173,8 +197,9 @@ object WatchPhoneSync {
 
     suspend fun linkStatus(context: Context): String {
         findPhone(context.applicationContext)
-        val nearby = WatchBtNearby.lastStatus + if (WatchBtNearby.isConnected()) " (есть канал)" else ""
-        return "$nearby; Data Layer: ${lastLinkDetail ?: "телефон не найден"}"
+        val nearby = WatchBtNearby.lastStatus + if (WatchBtNearby.isConnected()) " (Nearby)" else ""
+        val rfcomm = WatchRfcomm.lastStatus + if (WatchRfcomm.isConnected()) " (RFCOMM)" else ""
+        return "$rfcomm; $nearby; Data Layer: ${lastLinkDetail ?: "телефон не найден"}"
     }
 
     @Volatile

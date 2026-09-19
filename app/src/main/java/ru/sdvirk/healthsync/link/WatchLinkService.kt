@@ -11,7 +11,6 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import ru.sdvirk.healthsync.R
 import ru.sdvirk.healthsync.ui.MainActivity
 import ru.sdvirk.healthsync.wear.PhoneIngest
 
@@ -20,13 +19,14 @@ class WatchLinkService : Service() {
     private var http: PhoneLogServer? = null
     private var udp: PhoneUdpResponder? = null
     private var bt: PhoneBtNearby? = null
+    private var rfcomm: PhoneRfcomm? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         createChannel(this)
-        val notification = buildNotification(this, "Bluetooth: ищем часы. Не закрывайте приложение.")
+        val notification = buildNotification(this, "Bluetooth RFCOMM: ждём часы. Не закрывайте приложение.")
         if (Build.VERSION.SDK_INT >= 34) {
             val types = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
@@ -45,7 +45,8 @@ class WatchLinkService : Service() {
         ).also { it.start() }
         udp = PhoneUdpResponder(this).also { it.start() }
         bt = PhoneBtNearby(this).also { it.start() }
-        PhoneIngest.markBluetooth(this, "Bluetooth: ищем часы")
+        rfcomm = PhoneRfcomm(this).also { it.start() }
+        PhoneIngest.markBluetooth(this, "Bluetooth RFCOMM: ждём часы")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -54,9 +55,11 @@ class WatchLinkService : Service() {
         http?.stop()
         udp?.stop()
         bt?.stop()
+        rfcomm?.stop()
         http = null
         udp = null
         bt = null
+        rfcomm = null
         super.onDestroy()
     }
 

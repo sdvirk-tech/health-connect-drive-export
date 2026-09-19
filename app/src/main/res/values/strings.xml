@@ -5,7 +5,7 @@
     <string name="tip_samsung">Разрешения Health Sync только ЧИТАЮТ Health Connect. Галочки в Health Connect ≠ данные. Нужно: Samsung Health → Настройки → Health Connect → включить запись; в Health Connect у Samsung Health тоже все типы как у источника. Без «доступа к прошлым данным» новое приложение видит 0. Давление/ЭКГ — Samsung Health Monitor.</string>
     <string name="open_health_connect">Настройки Health Connect</string>
     <string name="open_samsung_health">Открыть Samsung Health</string>
-    <string name="tip_watch">Обмен часов с телефоном идёт постоянно по Bluetooth (Nearby + Wear Data Layer). Оставь Health Sync открытым — уведомление «Bluetooth с часами». На часах разреши Bluetooth. Wear-APK только на часы. На Samsung нет отдельного приложения Health Connect — разрешения даёт кнопка «Запросить разрешения Health Connect».</string>
+    <string name="tip_watch">Пульс с часов идёт по Bluetooth в Health Sync, не в приложение Health Connect. Держи Health Sync открытым. На часах разреши датчики и Bluetooth — пульс снимается сам. Wear-APK только на часы. На Samsung нет отдельного Health Connect — разрешения: «Запросить разрешения Health Connect».</string>
     <string name="hc_no_app">Отдельного приложения Health Connect на Samsung нет, Health Sync само себя не открывает. Нажми «Запросить разрешения Health Connect» — это системный экран разрешений. Писатель данных: Samsung Health → Настройки → Health Connect.</string>
     <string name="hc_unavailable">Health Connect API недоступен. На Samsung он встроен в систему (Настройки), отдельного значка часто нет.</string>
     <string name="watch_log_copy">Показать лог часов</string>

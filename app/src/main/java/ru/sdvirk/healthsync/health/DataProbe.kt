@@ -88,6 +88,7 @@ object DataProbe {
         }
 
         lines += ru.sdvirk.healthsync.wear.PhoneIngest.bluetoothLine(context)
+        lines += "Пульс часов смотри здесь, не в Health Connect: Health Connect — это Samsung Health, а не канал часов."
         lines += watchLinkLine(context)
         val lanIp = ru.sdvirk.healthsync.link.PhoneLogServer.localIpv4()
         lines += if (lanIp == null) {

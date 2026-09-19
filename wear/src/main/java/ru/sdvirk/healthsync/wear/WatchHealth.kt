@@ -1,7 +1,10 @@
 package ru.sdvirk.healthsync.wear
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.SystemClock
+import androidx.core.content.ContextCompat
 import androidx.concurrent.futures.await
 import androidx.health.services.client.HealthServices
 import androidx.health.services.client.PassiveListenerService
@@ -149,6 +152,10 @@ object WatchHealth {
     fun isPassiveEnabled(context: Context): Boolean =
         context.getSharedPreferences(WatchSync.PREFS_WATCH, Context.MODE_PRIVATE)
             .getBoolean(WatchSync.KEY_PASSIVE_ENABLED, false)
+
+    fun hasBodySensors(context: Context): Boolean =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.BODY_SENSORS) ==
+            PackageManager.PERMISSION_GRANTED
 
     private fun sampleInstant(point: SampleDataPoint<*>, boot: Instant): Instant =
         boot.plus(point.timeDurationFromBoot)

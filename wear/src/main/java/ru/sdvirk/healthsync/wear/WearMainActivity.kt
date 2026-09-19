@@ -40,12 +40,16 @@ class WearMainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
         WatchBtService.start(this)
+        lifecycleScope.launch { autoCollect() }
         refreshStatus()
     }
 
     private val requestSensorPermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { refreshStatus() }
+    ) {
+        lifecycleScope.launch { autoCollect() }
+        refreshStatus()
+    }
 
     private val requestHcPermissions = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract()
@@ -63,7 +67,7 @@ class WearMainActivity : ComponentActivity() {
         status = findViewById(R.id.status)
         WatchBtService.start(this)
         WatchPhoneSync.schedule(this)
-        requestBtPermissions.launch(BluetoothPerms.needed())
+        requestBtPermissions.launch(neededSensorPermissions())
 
         findViewById<Button>(R.id.permissions).setOnClickListener {
             requestSensorPermissions.launch(neededSensorPermissions())
@@ -163,7 +167,24 @@ class WearMainActivity : ComponentActivity() {
             append(" ECG ${n(WatchSample.ECG)}\n")
             append(sensors)
             append("\n")
+            append(WatchRfcomm.lastStatus)
+            append("\n")
             append(WatchBtNearby.lastStatus)
+        }
+    }
+
+    private suspend fun autoCollect() {
+        if (!hasBodySensors()) return
+        if (!WatchHealth.isPassiveEnabled(this)) {
+            runCatching { WatchHealth.registerPassive(this) }
+        }
+        if (WatchHealth.store(this).lastHeartRate() == null) {
+            startMeasure()
+        }
+        WatchBtService.start(this)
+        withContext(Dispatchers.IO) {
+            WatchRfcomm.ensureConnected(this@WearMainActivity)
+            runCatching { WatchPhoneSync.syncNow(this@WearMainActivity) }
         }
     }
 

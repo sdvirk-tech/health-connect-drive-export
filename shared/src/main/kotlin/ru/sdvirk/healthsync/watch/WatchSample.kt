@@ -48,4 +48,6 @@ object WatchSync {
     const val NEARBY_PHONE_NAME = "HealthSync"
     const val NEARBY_WATCH_NAME = "HealthSyncWatch"
     const val NEARBY_MAX_BYTES = 20_000
+    const val BT_UUID = "8f3d2c1a-9b47-4e6d-a1c0-7b2e5d4f6a80"
+    const val BT_SDP_NAME = "HealthSync"
 }
