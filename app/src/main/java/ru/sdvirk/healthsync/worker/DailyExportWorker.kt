@@ -27,7 +27,7 @@ class DailyExportWorker(
         val uploadUrl = prefs.getString(KEY_UPLOAD_URL, "") ?: ""
         val tree = prefs.getString(KEY_EXPORT_TREE, "") ?: ""
 
-        val days = prefs.getInt(KEY_LOOKBACK_DAYS, 7).coerceIn(1, 90)
+        val days = prefs.getInt(KEY_LOOKBACK_DAYS, 30).coerceIn(1, 90)
         val reader = HealthConnectReader(applicationContext)
         val end = Instant.now()
         val start = end.minus(days.toLong(), ChronoUnit.DAYS)

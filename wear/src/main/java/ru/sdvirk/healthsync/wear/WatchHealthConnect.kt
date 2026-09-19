@@ -43,7 +43,7 @@ object WatchHealthConnect {
         HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY,
     )
 
-    suspend fun pull(context: Context, days: Long = 7): Pair<List<WatchSample>, String> {
+    suspend fun pull(context: Context, days: Long = 30): Pair<List<WatchSample>, String> {
         val sdk = availability(context)
         if (sdk != SDK_AVAILABLE) {
             return emptyList<WatchSample>() to hcUnavailable(sdk)

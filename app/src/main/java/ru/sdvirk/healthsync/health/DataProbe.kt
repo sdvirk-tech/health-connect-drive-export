@@ -3,11 +3,16 @@ package ru.sdvirk.healthsync.health
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABLE
+import androidx.health.connect.client.permission.HealthPermission
+import com.google.android.gms.tasks.Tasks
+import com.google.android.gms.wearable.CapabilityClient
+import com.google.android.gms.wearable.Wearable
 import ru.sdvirk.healthsync.watch.WatchSample
 import ru.sdvirk.healthsync.watch.WatchSampleStore
 import ru.sdvirk.healthsync.watch.WatchSync
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.concurrent.TimeUnit
 
 data class TypeProbe(
     val name: String,
@@ -48,22 +53,40 @@ object DataProbe {
         }
 
         if (sdk == SDK_AVAILABLE && granted.isNotEmpty()) {
+            val hasHistory = HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY in granted
+            if (!hasHistory) {
+                lines += "Нет READ_HEALTH_DATA_HISTORY (доступ к прошлым данным)."
+                lines += "Галочки типов в Health Connect этого не заменяют: без history новое приложение видит 0."
+            }
             val end = Instant.now()
-            val start = end.minus(7, ChronoUnit.DAYS)
+            val start = end.minus(30, ChronoUnit.DAYS)
             val probe = reader.probeSince(start, end)
             probe.forEach { t ->
                 val origin = if (t.origins.isEmpty()) "нет источника" else t.origins.joinToString()
                 val err = t.error?.let { " ERR=$it" } ?: ""
                 val perm = if (t.granted) "ok" else "нет доступа"
-                lines += "${t.name}: ${t.count} за 7д, perm=$perm, $origin$err"
+                lines += "${t.name}: ${t.count} за 30д, perm=$perm, $origin$err"
             }
-            val anyRecords = probe.any { it.count > 0 }
+            val snap = runCatching { reader.readSince(start, end) }.getOrNull()
+            snap?.aggregateHints?.forEach { lines += it }
+            snap?.readErrors?.forEach { lines += "чтение: $it" }
+            val anyRecords = probe.any { it.count > 0 } ||
+                snap?.aggregateHints.orEmpty().any { it.contains("источники=") }
             if (!anyRecords && missing.isEmpty()) {
-                lines += "Разрешения есть, записей нет: Samsung Health не ПИШЕТ в Health Connect."
-                lines += "Samsung Health → Настройки → Health Connect → разреши запись тех же типов."
-                lines += "Давление/ЭКГ: сначала замер в Samsung Health Monitor, потом запись в HC."
+                lines += "Разрешения Health Sync только ЧИТАЮТ. Записи пишет Samsung Health."
+                lines += "Samsung Health → Настройки → Health Connect → включи синхронизацию и ЗАПИСЬ тех же типов."
+                lines += "Health Connect → права приложений → Samsung Health — тоже все разрешить (как источник)."
+                lines += "Давление/ЭКГ: сначала замер в Samsung Health Monitor."
             }
         }
+
+        lines += if (HcSettings.samsungHealthInstalled(context)) {
+            "Samsung Health установлен (com.sec.android.app.shealth)"
+        } else {
+            "Samsung Health не найден на телефоне"
+        }
+
+        lines += watchLinkLine(context)
 
         val store = WatchSampleStore.at(context.filesDir)
         val byType = store.countsByType()
@@ -87,5 +110,22 @@ object DataProbe {
             }
         }
         return DataProbeReport(lines)
+    }
+
+    private fun watchLinkLine(context: Context): String = try {
+        val cap = Tasks.await(
+            Wearable.getCapabilityClient(context)
+                .getCapability(WatchSync.CAPABILITY_WATCH, CapabilityClient.FILTER_REACHABLE),
+            5,
+            TimeUnit.SECONDS,
+        )
+        val connected = Tasks.await(Wearable.getNodeClient(context).connectedNodes, 5, TimeUnit.SECONDS)
+        val capNames = cap.nodes.joinToString { it.displayName + if (it.isNearby) "*" else "" }
+            .ifBlank { "нет" }
+        val connNames = connected.joinToString { it.displayName + if (it.isNearby) "*" else "" }
+            .ifBlank { "нет" }
+        "Часы Data Layer: capability=$capNames, connected=$connNames"
+    } catch (e: Exception) {
+        "Часы Data Layer: ${e.javaClass.simpleName}"
     }
 }

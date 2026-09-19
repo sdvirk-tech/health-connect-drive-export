@@ -35,7 +35,7 @@ if ($Apk) {
 
 Set-Location $PSScriptRoot
 
-$ApkUrl = "https://github.com/sdvirk-tech/health-connect-drive-export/raw/cursor/watch-vitals-export-8125/dist/HealthSync-wear-0.3.0-debug.apk"
+$ApkUrl = "https://github.com/sdvirk-tech/health-connect-drive-export/raw/cursor/watch-vitals-export-8125/dist/HealthSync-wear-0.3.1-debug.apk"
 $WearPackage = "ru.sdvirk.healthsync.wear"
 $WearActivity = "ru.sdvirk.healthsync.wear/.WearMainActivity"
 
@@ -105,18 +105,24 @@ function Test-IsWatch([string]$adb, [string]$serial) {
 }
 
 function Find-WearApk {
-    $extra = @(
-        "C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk",
-        (Join-Path $env:USERPROFILE "Downloads\HealthSync-wear-0.3.0-debug.apk")
-    )
-    foreach ($path in $extra) {
-        if ($path -and (Test-Path $path)) { return $path }
-    }
     $distDir = Join-Path $PSScriptRoot "dist"
     if (Test-Path $distDir) {
         $found = @(Get-ChildItem $distDir -Filter "HealthSync-wear-*-debug.apk" -ErrorAction SilentlyContinue |
             Sort-Object LastWriteTime -Descending)
         if ($found.Count -gt 0) { return $found[0].FullName }
+    }
+    $healthWear = "C:\IT\Cursor\HealthWear"
+    if (Test-Path $healthWear) {
+        $fromFolder = @(Get-ChildItem $healthWear -Filter "HealthSync-wear-*-debug.apk" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending)
+        if ($fromFolder.Count -gt 0) { return $fromFolder[0].FullName }
+    }
+    $extra = @(
+        (Join-Path $env:USERPROFILE "Downloads\HealthSync-wear-0.3.1-debug.apk"),
+        (Join-Path $env:USERPROFILE "Downloads\HealthSync-wear-0.3.0-debug.apk")
+    )
+    foreach ($path in $extra) {
+        if ($path -and (Test-Path $path)) { return $path }
     }
     $here = Get-ChildItem $PSScriptRoot -Filter "HealthSync-wear-*-debug.apk" -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending
@@ -141,7 +147,7 @@ function Get-WearApk {
     if (-not (Test-Path $distDir)) {
         New-Item -ItemType Directory -Path $distDir | Out-Null
     }
-    $dest = Join-Path $distDir "HealthSync-wear-0.3.0-debug.apk"
+    $dest = Join-Path $distDir "HealthSync-wear-0.3.1-debug.apk"
     Write-Host "==> Downloading Wear APK..."
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12

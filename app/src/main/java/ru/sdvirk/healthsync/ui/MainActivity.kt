@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +41,7 @@ import ru.sdvirk.healthsync.export.JsonExporter
 import ru.sdvirk.healthsync.export.watchSampleCount
 import ru.sdvirk.healthsync.export.withWatchSamples
 import ru.sdvirk.healthsync.health.DataProbe
+import ru.sdvirk.healthsync.health.HcSettings
 import ru.sdvirk.healthsync.health.HealthConnectReader
 import ru.sdvirk.healthsync.worker.DailyExportWorker
 import java.io.File
@@ -95,6 +97,11 @@ class MainActivity : ComponentActivity() {
                     var secret by remember {
                         mutableStateOf(prefs.getString(DailyExportWorker.KEY_SECRET, "") ?: "")
                     }
+                    LaunchedEffect(Unit) {
+                        status = withContext(Dispatchers.IO) {
+                            DataProbe.run(this@MainActivity, reader).asText()
+                        }
+                    }
 
                     Column(
                         Modifier
@@ -140,6 +147,24 @@ class MainActivity : ComponentActivity() {
                         ) { Text(stringResource(R.string.request_permissions)) }
 
                         Button(
+                            onClick = {
+                                if (!HcSettings.openHealthConnect(this@MainActivity)) {
+                                    Toast.makeText(this@MainActivity, "Health Connect не открылся", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(stringResource(R.string.open_health_connect)) }
+
+                        Button(
+                            onClick = {
+                                if (!HcSettings.openSamsungHealth(this@MainActivity)) {
+                                    Toast.makeText(this@MainActivity, "Samsung Health не найден", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(stringResource(R.string.open_samsung_health)) }
+
+                        Button(
                             onClick = { pickFolder.launch(null) },
                             modifier = Modifier.fillMaxWidth()
                         ) { Text(stringResource(R.string.choose_folder)) }
@@ -166,33 +191,34 @@ class MainActivity : ComponentActivity() {
                                         return@launch
                                     }
                                     val end = Instant.now()
-                                    val start = end.minus(7, ChronoUnit.DAYS)
-                                    val snap = reader.readSince(start, end).withWatchSamples(this@MainActivity)
-                                    val fileName = ExportFileNames.zipName()
-                                    val out = File(cacheDir, fileName)
-                                    JsonExporter.writeZip(snap, out)
-                                    status = snap.summaryLines().joinToString(" · ")
-                                    val tree = prefs.getString(DailyExportWorker.KEY_EXPORT_TREE, "") ?: ""
-                                    if (tree.isNotBlank()) {
-                                        runCatching {
-                                            FolderExport.copyZip(this@MainActivity, out, Uri.parse(tree))
-                                            status += "\n${getString(R.string.status_folder_copied)}"
-                                        }.onFailure {
-                                            status += "\n${it.message ?: ""}"
+                                    val start = end.minus(30, ChronoUnit.DAYS)
+                                    status = withContext(Dispatchers.IO) {
+                                        val snap = reader.readSince(start, end).withWatchSamples(this@MainActivity)
+                                        val fileName = ExportFileNames.zipName()
+                                        val out = File(cacheDir, fileName)
+                                        JsonExporter.writeZip(snap, out)
+                                        var text = snap.summaryLines().joinToString(" · ")
+                                        val tree = prefs.getString(DailyExportWorker.KEY_EXPORT_TREE, "") ?: ""
+                                        if (tree.isNotBlank()) {
+                                            runCatching {
+                                                FolderExport.copyZip(this@MainActivity, out, Uri.parse(tree))
+                                                text += "\n${getString(R.string.status_folder_copied)}"
+                                            }.onFailure {
+                                                text += "\n${it.message ?: ""}"
+                                            }
                                         }
-                                    }
-                                    val url = prefs.getString(DailyExportWorker.KEY_UPLOAD_URL, "") ?: ""
-                                    if (url.isBlank()) {
-                                        status += "\n${getString(R.string.status_local_zip, out.absolutePath)}"
-                                    } else {
-                                        val token = prefs.getString(DailyExportWorker.KEY_SECRET, "") ?: ""
-                                        val result = withContext(Dispatchers.IO) {
-                                            DriveUploader(url, token).upload(out, fileName)
+                                        val url = prefs.getString(DailyExportWorker.KEY_UPLOAD_URL, "") ?: ""
+                                        if (url.isBlank()) {
+                                            text += "\n${getString(R.string.status_local_zip, out.absolutePath)}"
+                                        } else {
+                                            val token = prefs.getString(DailyExportWorker.KEY_SECRET, "") ?: ""
+                                            val result = DriveUploader(url, token).upload(out, fileName)
+                                            result.fold(
+                                                onSuccess = { text += "\n${getString(R.string.status_uploaded, it)}" },
+                                                onFailure = { text += "\n${getString(R.string.status_upload_error, it.message ?: "")}" }
+                                            )
                                         }
-                                        result.fold(
-                                            onSuccess = { status += "\n${getString(R.string.status_uploaded, it)}" },
-                                            onFailure = { status += "\n${getString(R.string.status_upload_error, it.message ?: "")}" }
-                                        )
+                                        text
                                     }
                                 }
                             },

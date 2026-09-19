@@ -9,9 +9,11 @@ import androidx.work.WorkerParameters
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.suspendCancellableCoroutine
+import ru.sdvirk.healthsync.watch.WatchNodePicker
 import ru.sdvirk.healthsync.watch.WatchSampleStore
 import ru.sdvirk.healthsync.watch.WatchSync
 import ru.sdvirk.healthsync.watch.WatchSyncCodec
+import ru.sdvirk.healthsync.watch.WearNodeRef
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -20,7 +22,7 @@ object WatchPhoneSync {
     fun enqueue(context: Context) {
         WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
             "watch_phone_sync",
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.REPLACE,
             OneTimeWorkRequestBuilder<WatchSyncWorker>().build()
         )
     }
@@ -33,7 +35,8 @@ object WatchPhoneSync {
         val pending = store.readAfter(from)
         if (pending.isEmpty()) return 0
 
-        val nodeId = findPhoneNode(app) ?: error("Телефон не рядом. Открой Health Sync на телефоне.")
+        val node = findPhone(app)
+        val nodeId = node?.id ?: error(lastLinkDetail ?: "Телефон не рядом. Открой Health Sync на телефоне.")
         val client = Wearable.getMessageClient(app)
         var maxT = from
         for (chunk in WatchSyncCodec.chunk(pending)) {
@@ -47,12 +50,35 @@ object WatchPhoneSync {
         return pending.size
     }
 
-    private suspend fun findPhoneNode(context: Context): String? {
-        val cap = Wearable.getCapabilityClient(context)
-            .getCapability(WatchSync.CAPABILITY_PHONE, CapabilityClient.FILTER_REACHABLE)
-            .awaitTask()
-        val nearby = cap.nodes.firstOrNull { it.isNearby }
-        return (nearby ?: cap.nodes.firstOrNull())?.id
+    suspend fun linkStatus(context: Context): String {
+        findPhone(context.applicationContext)
+        return lastLinkDetail ?: "телефон не найден"
+    }
+
+    @Volatile
+    private var lastLinkDetail: String? = null
+
+    private suspend fun findPhone(context: Context): WearNodeRef? {
+        val capNodes = runCatching {
+            Wearable.getCapabilityClient(context)
+                .getCapability(WatchSync.CAPABILITY_PHONE, CapabilityClient.FILTER_REACHABLE)
+                .awaitTask()
+                .nodes
+                .map { WearNodeRef(it.id, it.isNearby, it.displayName) }
+        }.getOrDefault(emptyList())
+        val connected = runCatching {
+            Wearable.getNodeClient(context).connectedNodes.awaitTask()
+                .map { WearNodeRef(it.id, it.isNearby, it.displayName) }
+        }.getOrDefault(emptyList())
+        val picked = WatchNodePicker.pick(capNodes, connected)
+        lastLinkDetail = if (picked == null) {
+            "телефон не найден (capability=${capNodes.size}, connected=${connected.size}). Открой Health Sync на телефоне, Bluetooth вкл."
+        } else if (capNodes.none { it.id == picked.id }) {
+            "телефон ${picked.displayName} без capability healthsync_phone — поставь Health Sync 0.3.1 на телефон"
+        } else {
+            "телефон ${picked.displayName}" + if (picked.nearby) " рядом" else ""
+        }
+        return picked
     }
 }
 

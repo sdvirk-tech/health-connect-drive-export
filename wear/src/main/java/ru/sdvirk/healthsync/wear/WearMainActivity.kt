@@ -165,6 +165,7 @@ class WearMainActivity : ComponentActivity() {
             }
             appendLine(hcLine)
             appendLine("Локально: $counts")
+            appendLine("Связь: " + withContext(Dispatchers.IO) { WatchPhoneSync.linkStatus(this@WearMainActivity) })
             appendLine("Пульс: датчик часов (Health Services). Надень часы, «Замерить пульс» или фон.")
             appendLine("HRV/сон/SpO2/давление: Samsung Health должен ПИСАТЬ в Health Connect, затем «HC: сон/SpO2/BP/HRV».")
             appendLine("ЭКГ: Samsung Health Monitor, в Health Connect обычно нет. Health Services ЭКГ не отдаёт.")
