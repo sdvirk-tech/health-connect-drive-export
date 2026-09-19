@@ -36,6 +36,13 @@ class WearMainActivity : ComponentActivity() {
     private var measureJob: Job? = null
     private var measureCallback: MeasureCallback? = null
 
+    private val requestBtPermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        WatchBtService.start(this)
+        refreshStatus()
+    }
+
     private val requestSensorPermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { refreshStatus() }
@@ -54,6 +61,9 @@ class WearMainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_wear)
         status = findViewById(R.id.status)
+        WatchBtService.start(this)
+        WatchPhoneSync.schedule(this)
+        requestBtPermissions.launch(BluetoothPerms.needed())
 
         findViewById<Button>(R.id.permissions).setOnClickListener {
             requestSensorPermissions.launch(neededSensorPermissions())
@@ -152,6 +162,8 @@ class WearMainActivity : ComponentActivity() {
             append(" BP ${n(WatchSample.BLOOD_PRESSURE)}")
             append(" ECG ${n(WatchSample.ECG)}\n")
             append(sensors)
+            append("\n")
+            append(WatchBtNearby.lastStatus)
         }
     }
 
@@ -167,7 +179,7 @@ class WearMainActivity : ComponentActivity() {
             val via = withContext(Dispatchers.IO) { WatchPhoneSync.sendDiag(this@WearMainActivity, log) }
             status.text = log + "\n\nОтправлено: $via\nНа телефоне: «Показать лог часов»."
         } catch (e: Exception) {
-            status.text = log + "\n\nНе ушло: ${e.message ?: e.javaClass.simpleName}\nОставьте Health Sync открытым, та же Wi-Fi, снова «Лог на телефон»."
+            status.text = log + "\n\nНе ушло: ${e.message ?: e.javaClass.simpleName}\nBluetooth вкл, Health Sync на телефоне открыт, снова «Лог на телефон»."
         }
     }
 
@@ -212,6 +224,7 @@ class WearMainActivity : ComponentActivity() {
             appendLine("Фон датчики: " + if (WatchHealth.isPassiveEnabled(this@WearMainActivity)) "вкл" else "выкл")
             appendLine("Датчики тела: " + if (hasBodySensors()) "OK" else "нет")
             appendLine("Wi-Fi часов: " + LanAddresses.allIpv4Summary())
+            appendLine(WatchBtNearby.lastStatus + if (WatchBtNearby.isConnected()) " (канал есть)" else "")
             val lastLan = getSharedPreferences(WatchSync.PREFS_WATCH, MODE_PRIVATE)
                 .getString(WatchSync.KEY_LAST_LAN_IP, null)
             appendLine("Последний IP телефона: " + (lastLan ?: "ещё не находили"))
@@ -293,6 +306,7 @@ class WearMainActivity : ComponentActivity() {
         add(Manifest.permission.BODY_SENSORS)
         if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.BODY_SENSORS_BACKGROUND)
         add(Manifest.permission.ACTIVITY_RECOGNITION)
+        addAll(BluetoothPerms.needed().toList())
     }.toTypedArray()
 
     private fun hasBodySensors(): Boolean =

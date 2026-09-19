@@ -12,6 +12,7 @@ import ru.sdvirk.healthsync.watch.WatchSync
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        WatchBtService.start(context)
         val enabled = context.getSharedPreferences(WatchSync.PREFS_WATCH, Context.MODE_PRIVATE)
             .getBoolean(WatchSync.KEY_PASSIVE_ENABLED, false)
         if (!enabled) return

@@ -50,9 +50,11 @@ import ru.sdvirk.healthsync.export.withWatchSamples
 import ru.sdvirk.healthsync.health.DataProbe
 import ru.sdvirk.healthsync.health.HcSettings
 import ru.sdvirk.healthsync.health.HealthConnectReader
+import ru.sdvirk.healthsync.link.BluetoothPerms
 import ru.sdvirk.healthsync.link.PhoneLogServer
 import ru.sdvirk.healthsync.link.WatchLinkService
 import ru.sdvirk.healthsync.watch.LanAddresses
+import ru.sdvirk.healthsync.wear.PhoneIngest
 import ru.sdvirk.healthsync.wear.WatchDiagStore
 import ru.sdvirk.healthsync.worker.DailyExportWorker
 import java.io.File
@@ -93,8 +95,8 @@ class MainActivity : ComponentActivity() {
         Toast.makeText(this, getString(R.string.folder_saved), Toast.LENGTH_SHORT).show()
     }
 
-    private val requestNotify = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
+    private val requestLinkPerms = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
     ) { WatchLinkService.start(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -102,9 +104,12 @@ class MainActivity : ComponentActivity() {
         reader = HealthConnectReader(this)
         val prefs = getSharedPreferences(DailyExportWorker.PREFS, MODE_PRIVATE)
         WatchLinkService.start(this)
-        if (Build.VERSION.SDK_INT >= 33) {
-            requestNotify.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        requestLinkPerms.launch(
+            buildList {
+                if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
+                addAll(BluetoothPerms.needed().toList())
+            }.toTypedArray()
+        )
 
         setContent {
             MaterialTheme {
@@ -151,7 +156,8 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Text("Health Sync → Drive", style = MaterialTheme.typography.headlineSmall)
                         Text(
-                            "Wi-Fi приём с часов: ${PhoneLogServer.localIpv4() ?: "нет IPv4"}:8765 (${LanAddresses.allIpv4Summary()}). Не закрывайте Health Sync — сверните, не смахивайте.",
+                            PhoneIngest.bluetoothLine(this@MainActivity) +
+                                ". Обмен с часами идёт по Bluetooth постоянно. Wi-Fi запасной: ${PhoneLogServer.localIpv4() ?: "нет IPv4"} (${LanAddresses.allIpv4Summary()}).",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(stringResource(R.string.intro))

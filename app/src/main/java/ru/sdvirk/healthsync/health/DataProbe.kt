@@ -87,6 +87,7 @@ object DataProbe {
             "Samsung Health не найден на телефоне"
         }
 
+        lines += ru.sdvirk.healthsync.wear.PhoneIngest.bluetoothLine(context)
         lines += watchLinkLine(context)
         val lanIp = ru.sdvirk.healthsync.link.PhoneLogServer.localIpv4()
         lines += if (lanIp == null) {

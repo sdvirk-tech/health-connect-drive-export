@@ -11,8 +11,8 @@ android {
         applicationId = "ru.sdvirk.healthsync.wear"
         minSdk = 30
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.3.4"
+        versionCode = 7
+        versionName = "0.3.5"
     }
 
     buildTypes {
@@ -43,4 +43,5 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("com.google.android.gms:play-services-wearable:18.2.0")
+    implementation("com.google.android.gms:play-services-nearby:19.3.0")
 }

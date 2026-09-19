@@ -42,4 +42,10 @@ object WatchSync {
     const val LAN_PROBE = "HEALTHSYNC?"
     const val LAN_MAGIC = "HEALTHSYNC/1"
     const val KEY_LAST_LAN_IP = "last_lan_ip"
+    const val KEY_BT_STATUS = "bt_status"
+    const val KEY_LAST_BT_MS = "last_bt_ms"
+    const val NEARBY_SERVICE_ID = "ru.sdvirk.healthsync.bt"
+    const val NEARBY_PHONE_NAME = "HealthSync"
+    const val NEARBY_WATCH_NAME = "HealthSyncWatch"
+    const val NEARBY_MAX_BYTES = 20_000
 }

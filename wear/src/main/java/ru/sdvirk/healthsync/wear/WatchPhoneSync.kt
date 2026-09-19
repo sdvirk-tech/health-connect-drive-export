@@ -2,11 +2,14 @@ package ru.sdvirk.healthsync.wear
 
 import android.content.Context
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.google.android.gms.wearable.CapabilityClient
+import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.suspendCancellableCoroutine
 import ru.sdvirk.healthsync.watch.WatchNodePicker
@@ -14,6 +17,7 @@ import ru.sdvirk.healthsync.watch.WatchSampleStore
 import ru.sdvirk.healthsync.watch.WatchSync
 import ru.sdvirk.healthsync.watch.WatchSyncCodec
 import ru.sdvirk.healthsync.watch.WearNodeRef
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -27,6 +31,16 @@ object WatchPhoneSync {
         )
     }
 
+    fun schedule(context: Context) {
+        val app = context.applicationContext
+        WorkManager.getInstance(app).enqueueUniquePeriodicWork(
+            "watch_phone_sync_periodic",
+            ExistingPeriodicWorkPolicy.KEEP,
+            PeriodicWorkRequestBuilder<WatchSyncWorker>(15, TimeUnit.MINUTES).build(),
+        )
+        enqueue(app)
+    }
+
     suspend fun syncNow(context: Context): Int {
         val app = context.applicationContext
         val store = WatchSampleStore.at(app.filesDir)
@@ -37,32 +51,57 @@ object WatchPhoneSync {
 
         val errors = ArrayList<String>()
         val json = WatchSyncCodec.encodeMessage(pending)
+
+        val nearby = runCatching {
+            WatchBtNearby.start(app)
+            if (!WatchBtNearby.isConnected()) WatchBtNearby.waitUntilConnected(6_000)
+            if (!WatchBtNearby.isConnected()) error(WatchBtNearby.lastStatus)
+            for (chunk in WatchSyncCodec.chunk(pending, WatchSync.NEARBY_MAX_BYTES)) {
+                val body = chunk.toString(Charsets.UTF_8)
+                if (!WatchBtNearby.sendSamples(body)) error("Bluetooth Nearby не принял пробы")
+            }
+            "Bluetooth Nearby"
+        }
+        if (nearby.isSuccess) {
+            markSynced(prefs, store, from, pending)
+            putDataLayer(app, WatchSync.PATH_SAMPLES, "json", json)
+            return pending.size
+        }
+        errors += nearby.exceptionOrNull()?.message ?: "Nearby fail"
+
+        val dataLayer = runCatching {
+            putDataLayer(app, WatchSync.PATH_SAMPLES, "json", json)
+            val node = findPhone(app)
+            if (node != null) {
+                val client = Wearable.getMessageClient(app)
+                for (chunk in WatchSyncCodec.chunk(pending, WatchSync.NEARBY_MAX_BYTES)) {
+                    val code = client.sendMessage(node.id, WatchSync.PATH_SAMPLES, chunk).awaitTask()
+                    if (code < 0) error("Wear Data Layer не принял сообщение")
+                }
+                "Bluetooth Data Layer ${node.displayName}"
+            } else if (lastConnectedCount > 0) {
+                "Bluetooth Data Layer очередь"
+            } else {
+                error(lastLinkDetail ?: "Wear Data Layer: телефон не найден")
+            }
+        }
+        if (dataLayer.isSuccess) {
+            markSynced(prefs, store, from, pending)
+            return pending.size
+        }
+        errors += dataLayer.exceptionOrNull()?.message ?: "Data Layer fail"
+
         val lan = runCatching {
             val (ip, port) = WatchLanClient.findPhoneHttp(app)
             WatchLanClient.post(ip, port, "/samples", json)
-            ip
+            "Wi-Fi $ip:$port"
         }
         if (lan.isSuccess) {
             markSynced(prefs, store, from, pending)
             return pending.size
         }
-        errors += "Wi-Fi: " + (lan.exceptionOrNull()?.message ?: "fail")
-
-        val wear = runCatching {
-            val node = findPhone(app)
-                ?: error(lastLinkDetail ?: "Wear Data Layer: телефон не найден")
-            val client = Wearable.getMessageClient(app)
-            for (chunk in WatchSyncCodec.chunk(pending)) {
-                val code = client.sendMessage(node.id, WatchSync.PATH_SAMPLES, chunk).awaitTask()
-                if (code < 0) error("Wear Data Layer не принял сообщение")
-            }
-        }
-        if (wear.isSuccess) {
-            markSynced(prefs, store, from, pending)
-            return pending.size
-        }
-        errors += "Bluetooth: " + (wear.exceptionOrNull()?.message ?: "fail")
-        error(errors.joinToString(" | "))
+        errors += lan.exceptionOrNull()?.message ?: "Wi-Fi fail"
+        error("Bluetooth не доставил. " + errors.joinToString(" | "))
     }
 
     suspend fun sendDiag(context: Context, text: String): String {
@@ -73,6 +112,32 @@ object WatchPhoneSync {
             text
         }
         val errors = ArrayList<String>()
+
+        val nearby = runCatching {
+            WatchBtNearby.start(app)
+            if (!WatchBtNearby.isConnected()) WatchBtNearby.waitUntilConnected(8_000)
+            if (!WatchBtNearby.sendDiag(payload)) error(WatchBtNearby.lastStatus)
+            "Bluetooth Nearby"
+        }
+        if (nearby.isSuccess) {
+            putDataLayer(app, WatchSync.PATH_DIAG, "text", payload)
+            return nearby.getOrThrow()
+        }
+        errors += "Nearby: " + (nearby.exceptionOrNull()?.message ?: "fail")
+
+        val wear = runCatching {
+            putDataLayer(app, WatchSync.PATH_DIAG, "text", payload)
+            val node = findPhone(app)
+                ?: error(lastLinkDetail ?: "Wear Data Layer: телефон не найден")
+            val code = Wearable.getMessageClient(app)
+                .sendMessage(node.id, WatchSync.PATH_DIAG, payload.toByteArray(Charsets.UTF_8))
+                .awaitTask()
+            if (code < 0) error("Wear Data Layer не принял лог")
+            "Bluetooth Data Layer"
+        }
+        if (wear.isSuccess) return wear.getOrThrow()
+        errors += "Data Layer: " + (wear.exceptionOrNull()?.message ?: "fail")
+
         val lan = runCatching {
             val (ip, port) = WatchLanClient.findPhoneHttp(app)
             WatchLanClient.post(ip, port, "/diag", payload)
@@ -80,22 +145,19 @@ object WatchPhoneSync {
         }
         if (lan.isSuccess) return lan.getOrThrow()
         errors += "Wi-Fi: " + (lan.exceptionOrNull()?.message ?: "fail")
-
-        val wear = runCatching {
-            val node = findPhone(app)
-                ?: error(lastLinkDetail ?: "Wear Data Layer: телефон не найден")
-            val code = Wearable.getMessageClient(app)
-                .sendMessage(node.id, WatchSync.PATH_DIAG, payload.toByteArray(Charsets.UTF_8))
-                .awaitTask()
-            if (code < 0) error("Wear Data Layer не принял лог")
-            "Bluetooth Wear Data Layer"
-        }
-        if (wear.isSuccess) return wear.getOrThrow()
-        errors += "Bluetooth: " + (wear.exceptionOrNull()?.message ?: "fail")
         error(
-            "Связи нет. Оставьте Health Sync открытым на телефоне, часы и телефон в одной Wi-Fi. " +
+            "Bluetooth не доставил лог. Держи Health Sync открытым на телефоне, Bluetooth вкл. " +
                 errors.joinToString(" | ")
         )
+    }
+
+    private suspend fun putDataLayer(context: Context, path: String, key: String, value: String) {
+        runCatching {
+            val req = PutDataMapRequest.create(path)
+            req.dataMap.putString(key, value)
+            req.dataMap.putLong("t", System.currentTimeMillis())
+            Wearable.getDataClient(context).putDataItem(req.asPutDataRequest().setUrgent()).awaitTask()
+        }
     }
 
     private fun markSynced(
@@ -111,16 +173,27 @@ object WatchPhoneSync {
 
     suspend fun linkStatus(context: Context): String {
         findPhone(context.applicationContext)
-        return lastLinkDetail ?: "телефон не найден"
+        val nearby = WatchBtNearby.lastStatus + if (WatchBtNearby.isConnected()) " (есть канал)" else ""
+        return "$nearby; Data Layer: ${lastLinkDetail ?: "телефон не найден"}"
     }
 
     @Volatile
     private var lastLinkDetail: String? = null
 
+    @Volatile
+    private var lastConnectedCount: Int = 0
+
     private suspend fun findPhone(context: Context): WearNodeRef? {
-        val capNodes = runCatching {
+        val capReachable = runCatching {
             Wearable.getCapabilityClient(context)
                 .getCapability(WatchSync.CAPABILITY_PHONE, CapabilityClient.FILTER_REACHABLE)
+                .awaitTask()
+                .nodes
+                .map { WearNodeRef(it.id, it.isNearby, it.displayName) }
+        }.getOrDefault(emptyList())
+        val capAll = runCatching {
+            Wearable.getCapabilityClient(context)
+                .getCapability(WatchSync.CAPABILITY_PHONE, CapabilityClient.FILTER_ALL)
                 .awaitTask()
                 .nodes
                 .map { WearNodeRef(it.id, it.isNearby, it.displayName) }
@@ -129,11 +202,10 @@ object WatchPhoneSync {
             Wearable.getNodeClient(context).connectedNodes.awaitTask()
                 .map { WearNodeRef(it.id, it.isNearby, it.displayName) }
         }.getOrDefault(emptyList())
-        val picked = WatchNodePicker.pick(capNodes, connected)
+        lastConnectedCount = connected.size
+        val picked = WatchNodePicker.pick(capReachable, capAll + connected)
         lastLinkDetail = if (picked == null) {
-            "телефон не найден (capability=${capNodes.size}, connected=${connected.size}). Открой Health Sync на телефоне, Bluetooth вкл."
-        } else if (capNodes.none { it.id == picked.id }) {
-            "телефон ${picked.displayName} без capability healthsync_phone — поставь Health Sync 0.3.4 на телефон"
+            "нет (capability=${capReachable.size}/${capAll.size}, connected=${connected.size})"
         } else {
             "телефон ${picked.displayName}" + if (picked.nearby) " рядом" else ""
         }
