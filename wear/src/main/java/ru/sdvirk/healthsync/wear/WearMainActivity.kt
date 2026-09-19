@@ -162,10 +162,10 @@ class WearMainActivity : ComponentActivity() {
         }
         status.text = log
         try {
-            withContext(Dispatchers.IO) { WatchPhoneSync.sendDiag(this@WearMainActivity, log) }
-            status.text = log + "\n\nЛог отправлен на телефон. Открой Health Sync → лог часов."
+            val via = withContext(Dispatchers.IO) { WatchPhoneSync.sendDiag(this@WearMainActivity, log) }
+            status.text = log + "\n\nОтправлено: $via\nНа телефоне: «Показать лог часов»."
         } catch (e: Exception) {
-            status.text = log + "\n\nНе ушло: ${e.message ?: e.javaClass.simpleName}\nОткрой Health Sync на телефоне, Bluetooth вкл, снова «Лог на телефон»."
+            status.text = log + "\n\nНе ушло: ${e.message ?: e.javaClass.simpleName}\nОставьте Health Sync открытым, та же Wi-Fi, снова «Лог на телефон»."
         }
     }
 

@@ -35,7 +35,7 @@ if ($Apk) {
 
 Set-Location $PSScriptRoot
 
-$ApkUrl = "https://github.com/sdvirk-tech/health-connect-drive-export/raw/cursor/watch-vitals-export-8125/dist/HealthSync-wear-0.3.2-debug.apk"
+$ApkUrl = "https://github.com/sdvirk-tech/health-connect-drive-export/raw/cursor/watch-vitals-export-8125/dist/HealthSync-wear-0.3.3-debug.apk"
 $WearPackage = "ru.sdvirk.healthsync.wear"
 $WearActivity = "ru.sdvirk.healthsync.wear/.WearMainActivity"
 
@@ -147,7 +147,7 @@ function Get-WearApk {
     if (-not (Test-Path $distDir)) {
         New-Item -ItemType Directory -Path $distDir | Out-Null
     }
-    $dest = Join-Path $distDir "HealthSync-wear-0.3.2-debug.apk"
+    $dest = Join-Path $distDir "HealthSync-wear-0.3.3-debug.apk"
     Write-Host "==> Downloading Wear APK..."
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12

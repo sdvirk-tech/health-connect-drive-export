@@ -5,7 +5,9 @@
     <string name="tip_samsung">Разрешения Health Sync только ЧИТАЮТ Health Connect. Галочки в Health Connect ≠ данные. Нужно: Samsung Health → Настройки → Health Connect → включить запись; в Health Connect у Samsung Health тоже все типы как у источника. Без «доступа к прошлым данным» новое приложение видит 0. Давление/ЭКГ — Samsung Health Monitor.</string>
     <string name="open_health_connect">Открыть Health Connect</string>
     <string name="open_samsung_health">Открыть Samsung Health</string>
-    <string name="tip_watch">На часах Health Sync Watch: «Разрешения», фон, «Замерить пульс», «HC: сон/SpO2/BP/HRV», «Почему пусто» или «Лог на телефон» — лог появится здесь. Wear-APK только на часы. ЭКГ Health Services/HC не отдают.</string>
+    <string name="tip_watch">Часы и телефон в одной Wi-Fi. Health Sync на телефоне оставьте открытым (уведомление «ждёт часы»). На часах: «Почему пусто» или «Лог на телефон». Wear-APK только на часы.</string>
+    <string name="hc_no_app">Отдельного приложения Health Connect на Samsung нет — это системные настройки. Открываю разрешения Health Sync.</string>
+    <string name="hc_unavailable">Health Connect API недоступен. На Samsung он встроен в систему (Настройки), отдельного значка часто нет.</string>
     <string name="watch_log_copy">Показать лог часов</string>
     <string name="watch_log_empty">Лога с часов ещё нет. На часах нажми «Лог на телефон».</string>
     <string name="watch_log_copied">Лог часов скопирован</string>
@@ -30,6 +32,5 @@
     <string name="status_local_zip">Zip локально: %1$s (URL не задан)</string>
     <string name="status_uploaded">Загружено: %1$s</string>
     <string name="status_upload_error">Ошибка загрузки: %1$s</string>
-    <string name="hc_unavailable">Health Connect недоступен. Установи или обнови приложение Health Connect из Play Store.</string>
     <string name="hc_update_required">Обнови Health Connect, затем открой приложение снова.</string>
 </resources>

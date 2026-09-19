@@ -37,4 +37,9 @@ object WatchSync {
     const val STORE_FILE = "watch_samples.jsonl"
     const val DIAG_FILE = "watch_diag.txt"
     const val MAX_DIAG_BYTES = 90_000
+    const val LAN_HTTP_PORT = 8765
+    const val LAN_UDP_PORT = 18765
+    const val LAN_PROBE = "HEALTHSYNC?"
+    const val LAN_MAGIC = "HEALTHSYNC/1"
+    const val KEY_LAST_LAN_IP = "last_lan_ip"
 }

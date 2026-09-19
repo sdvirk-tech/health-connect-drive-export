@@ -88,6 +88,12 @@ object DataProbe {
         }
 
         lines += watchLinkLine(context)
+        val lanIp = ru.sdvirk.healthsync.link.PhoneLogServer.localIpv4()
+        lines += if (lanIp == null) {
+            "Wi-Fi приём с часов: нет IPv4. Телефон должен быть в Wi-Fi, Health Sync открыт."
+        } else {
+            "Wi-Fi приём с часов: $lanIp:8765 — не закрывайте Health Sync, на часах «Лог на телефон»."
+        }
 
         WatchDiagStore.asProbeLines(context).forEach { lines += it }
 

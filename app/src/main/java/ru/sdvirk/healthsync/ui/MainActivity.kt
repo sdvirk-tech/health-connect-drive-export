@@ -1,9 +1,11 @@
 package ru.sdvirk.healthsync.ui
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -48,6 +50,8 @@ import ru.sdvirk.healthsync.export.withWatchSamples
 import ru.sdvirk.healthsync.health.DataProbe
 import ru.sdvirk.healthsync.health.HcSettings
 import ru.sdvirk.healthsync.health.HealthConnectReader
+import ru.sdvirk.healthsync.link.PhoneLogServer
+import ru.sdvirk.healthsync.link.WatchLinkService
 import ru.sdvirk.healthsync.wear.WatchDiagStore
 import ru.sdvirk.healthsync.worker.DailyExportWorker
 import java.io.File
@@ -87,10 +91,19 @@ class MainActivity : ComponentActivity() {
         Toast.makeText(this, getString(R.string.folder_saved), Toast.LENGTH_SHORT).show()
     }
 
+    private val requestNotify = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { WatchLinkService.start(this) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         reader = HealthConnectReader(this)
         val prefs = getSharedPreferences(DailyExportWorker.PREFS, MODE_PRIVATE)
+        if (Build.VERSION.SDK_INT >= 33) {
+            requestNotify.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            WatchLinkService.start(this)
+        }
 
         setContent {
             MaterialTheme {
@@ -125,6 +138,10 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text("Health Sync → Drive", style = MaterialTheme.typography.headlineSmall)
+                        Text(
+                            "Wi-Fi приём с часов: ${PhoneLogServer.localIpv4() ?: "нет IPv4"}:8765. Не закрывайте Health Sync — сверните, не смахивайте.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                         Text(stringResource(R.string.intro))
                         Text(
                             stringResource(R.string.tip_samsung),
@@ -162,8 +179,14 @@ class MainActivity : ComponentActivity() {
 
                         Button(
                             onClick = {
-                                if (!HcSettings.openHealthConnect(this@MainActivity)) {
-                                    Toast.makeText(this@MainActivity, "Health Connect не открылся", Toast.LENGTH_SHORT).show()
+                                val opened = HcSettings.openHealthConnect(this@MainActivity)
+                                if (!opened) {
+                                    requestPermissions.launch(reader.permissions)
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        getString(R.string.hc_no_app),
+                                        Toast.LENGTH_LONG
+                                    ).show()
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
