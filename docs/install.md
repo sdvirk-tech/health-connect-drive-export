@@ -42,17 +42,18 @@ git pull
 ```bat
 cd C:\IT\Cursor\health-connect-drive-export
 git pull
-.\install-watch.cmd -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
+.\install-watch.cmd -Apk C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
 ```
 
-Те же шаги вручную, если скрипт не нужен:
+Те же шаги вручную, если скрипт не нужен (APK уже лежит в HealthWear):
 
 ```bat
 set ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe
+set APK=C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk
 "%ADB%" pair 192.168.2.142:ПОРТ_КОДА 123456
 "%ADB%" connect 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
 "%ADB%" devices
-"%ADB%" -s 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ install -r dist\HealthSync-wear-0.3.0-debug.apk
+"%ADB%" -s 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ install -r "%APK%"
 ```
 
 Не пиши слово `IP` в адресе. Не ставь этот APK на телефон.

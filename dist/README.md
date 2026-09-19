@@ -8,7 +8,7 @@
 Часы (из корня репозитория, без Gradle):
 
 ```bat
-.\install-watch.cmd -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
+.\install-watch.cmd -Apk C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk -Pair 192.168.2.142:ПОРТ_КОДА -PairCode 123456 -Watch 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
 ```
 
 Или вручную:
@@ -17,7 +17,7 @@
 set ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe
 "%ADB%" pair 192.168.2.142:ПОРТ_КОДА 123456
 "%ADB%" connect 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ
-"%ADB%" -s 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ install -r dist\HealthSync-wear-0.3.0-debug.apk
+"%ADB%" -s 192.168.2.142:ПОРТ_ПОДКЛЮЧЕНИЯ install -r C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk
 ```
 
 Телефон по USB:

@@ -6,7 +6,7 @@
 #
 #   cd C:\IT\Cursor\health-connect-drive-export
 #   git pull
-#   .\install-watch.cmd -Pair 192.168.2.142:PAIR_PORT -PairCode 123456 -Watch 192.168.2.142:CONNECT_PORT
+#   .\install-watch.cmd -Apk C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk -Pair 192.168.2.142:PAIR_PORT -PairCode 123456 -Watch 192.168.2.142:CONNECT_PORT
 #
 # PAIR_PORT = the port on the pairing-code screen (plus 6-digit code).
 # CONNECT_PORT = the IP:port on the main Wireless debugging screen.
@@ -15,6 +15,7 @@ param(
     [string]$Watch = "",
     [string]$Pair = "",
     [string]$PairCode = "",
+    [string]$Apk = "",
     [switch]$Download
 )
 
@@ -22,6 +23,16 @@ $ErrorActionPreference = "Continue"
 if ($PSVersionTable.PSVersion.Major -ge 7) {
     $PSNativeCommandUseErrorActionPreference = $false
 }
+
+$apkOverride = $null
+if ($Apk) {
+    if ([System.IO.Path]::IsPathRooted($Apk)) {
+        $apkOverride = $Apk
+    } else {
+        $apkOverride = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Apk))
+    }
+}
+
 Set-Location $PSScriptRoot
 
 $ApkUrl = "https://github.com/sdvirk-tech/health-connect-drive-export/raw/cursor/watch-vitals-export-8125/dist/HealthSync-wear-0.3.0-debug.apk"
@@ -94,6 +105,13 @@ function Test-IsWatch([string]$adb, [string]$serial) {
 }
 
 function Find-WearApk {
+    $extra = @(
+        "C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk",
+        (Join-Path $env:USERPROFILE "Downloads\HealthSync-wear-0.3.0-debug.apk")
+    )
+    foreach ($path in $extra) {
+        if ($path -and (Test-Path $path)) { return $path }
+    }
     $distDir = Join-Path $PSScriptRoot "dist"
     if (Test-Path $distDir) {
         $found = @(Get-ChildItem $distDir -Filter "HealthSync-wear-*-debug.apk" -ErrorAction SilentlyContinue |
@@ -109,6 +127,13 @@ function Find-WearApk {
 }
 
 function Get-WearApk {
+    if ($apkOverride) {
+        if (-not (Test-Path $apkOverride)) {
+            Write-Host "APK not found: $apkOverride" -ForegroundColor Red
+            exit 1
+        }
+        return [System.IO.Path]::GetFullPath($apkOverride)
+    }
     $apk = Find-WearApk
     if ($apk -and -not $Download) { return $apk }
 
@@ -145,7 +170,7 @@ function Show-PairHelp([string]$ipHint, [string]$connectHint) {
     Write-Host "  Pair with pairing code        = another port + 6-digit code. Leave that screen open."
     Write-Host ""
     Write-Host "Then run (numbers only, no word IP):"
-    Write-Host "  .\install-watch.cmd -Pair $ipHint`:PAIR_PORT -PairCode 123456 -Watch $ipHint`:$connectHint"
+    Write-Host "  .\install-watch.cmd -Apk C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk -Pair $ipHint`:PAIR_PORT -PairCode 123456 -Watch $ipHint`:$connectHint"
     Write-Host ""
 }
 
