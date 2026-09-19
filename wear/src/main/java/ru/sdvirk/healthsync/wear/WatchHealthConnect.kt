@@ -156,6 +156,6 @@ object WatchHealthConnect {
         HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED ->
             "Обнови Health Connect на часах"
         else ->
-            "Health Connect на часах нет (нужен Wear OS 4+). Сон/SpO2/давление тогда только если Samsung пишет их на телефон."
+            "Health Connect на этих часах нет (Samsung не ставит его на Ultra). Сон — из состояния asleep. SpO2/давление/ЭКГ — только если Samsung пишет их в Health Connect на телефоне."
     }
 }

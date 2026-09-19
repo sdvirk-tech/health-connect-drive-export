@@ -49,7 +49,7 @@
                 android:id="@+id/passive"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Фон: датчики" />
+                android:text="Все датчики (фон)" />
 
             <Button
                 android:id="@+id/measure"

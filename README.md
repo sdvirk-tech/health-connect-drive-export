@@ -67,9 +67,9 @@ git checkout cursor/watch-vitals-export-8125
 
 Samsung Health часто **не пишет** пульс/HRV/сон/SpO₂/давление в Health Connect на телефоне. Модуль `:wear`:
 
-- живой **пульс** (и шаги) с датчика через Health Services;
-- **HRV, сон, SpO₂, давление** — чтение Health Connect **на часах**, если Samsung туда пишет;
-- всё уходит на телефон в zip (`watchSamples`) и в выбранную папку.
+- живой **пульс, шаги, калории, дистанция, этажи, набор высоты** с датчика через Health Services (все типы, которые часы объявляют);
+- **сон** как состояние asleep (надень часы на ночь); **HRV, SpO₂, давление** — только если Samsung пишет в Health Connect на **телефоне** (на Galaxy Watch Ultra Health Connect на часах нет);
+- всё уходит на телефон по Bluetooth (RFCOMM) в zip (`watchSamples`) и в выбранную папку.
 
 **ЭКГ** Samsung Health Monitor не отдаёт в Health Connect 1.1 и не виден через Health Services.
 
@@ -121,6 +121,6 @@ Samsung Health часто **не пишет** пульс/HRV/сон/SpO₂/да�
 - [x] Gradle wrapper + манифест + разрешения HC (включая фон / историю)
 - [x] Reader / JSON zip / WorkManager / UI
 - [x] Надёжная загрузка в Apps Script: JSON + base64 (не multipart)
-- [x] Wear OS: пульс/шаги с часов → телефон → `watchSamples` в zip
+- [x] Wear OS: все типы Health Services с часов → телефон → `watchSamples` в zip
 - [ ] OAuth Drive API как альтернатива
 - [ ] SQLite-формат как в текущем пустом `health_connect_export.db` (по желанию)

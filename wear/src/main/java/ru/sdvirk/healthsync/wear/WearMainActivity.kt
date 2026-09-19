@@ -153,18 +153,18 @@ class WearMainActivity : ComponentActivity() {
 
     private fun refreshStatus() {
         val counts = WatchHealth.store(this).countsByType()
-        fun n(type: String) = counts[type] ?: 0
         val sensors = if (hasBodySensors()) "датчики OK" else "нет датчиков"
         val passive = if (WatchHealth.isPassiveEnabled(this)) "фон вкл" else "фон выкл"
         val lastHr = WatchHealth.store(this).lastHeartRate()?.value?.toInt()?.let { "$it bpm" } ?: "нет"
         status.text = buildString {
             append("Пульс: $lastHr · $passive\n")
-            append("HS/HC проб: HR ${n(WatchSample.HEART_RATE)}")
-            append(" HRV ${n(WatchSample.HRV)}")
-            append(" SpO2 ${n(WatchSample.SPO2)}")
-            append(" сон ${n(WatchSample.SLEEP)}")
-            append(" BP ${n(WatchSample.BLOOD_PRESSURE)}")
-            append(" ECG ${n(WatchSample.ECG)}\n")
+            if (counts.isEmpty()) {
+                append("пробы: нет\n")
+            } else {
+                append("пробы: ")
+                append(counts.entries.sortedBy { it.key }.joinToString { "${it.key}=${it.value}" })
+                append("\n")
+            }
             append(sensors)
             append("\n")
             append(WatchRfcomm.lastStatus)
@@ -175,9 +175,7 @@ class WearMainActivity : ComponentActivity() {
 
     private suspend fun autoCollect() {
         if (!hasBodySensors()) return
-        if (!WatchHealth.isPassiveEnabled(this)) {
-            runCatching { WatchHealth.registerPassive(this) }
-        }
+        runCatching { WatchHealth.registerPassive(this) }
         if (WatchHealth.store(this).lastHeartRate() == null) {
             startMeasure()
         }
@@ -250,9 +248,9 @@ class WearMainActivity : ComponentActivity() {
                 .getString(WatchSync.KEY_LAST_LAN_IP, null)
             appendLine("Последний IP телефона: " + (lastLan ?: "ещё не находили"))
             appendLine("Связь Data Layer: " + withContext(Dispatchers.IO) { WatchPhoneSync.linkStatus(this@WearMainActivity) })
-            appendLine("Пульс: датчик часов (Health Services). Надень часы, «Замерить пульс» или фон.")
-            appendLine("HRV/сон/SpO2/давление: Samsung Health должен ПИСАТЬ в Health Connect, затем «HC: сон/SpO2/BP/HRV».")
-            appendLine("ЭКГ: Samsung Health Monitor, в Health Connect обычно нет.")
+            appendLine("Пульс/шаги/калории/дистанция/этажи: Health Services, фон включён — все типы, которые часы отдают.")
+            appendLine("Сон: состояние USER_ACTIVITY_ASLEEP (надень часы на ночь). На Galaxy Watch Ultra нет Health Connect.")
+            appendLine("HRV/SpO2/давление/ЭКГ: датчик Health Services их не отдаёт. Только если Samsung Health пишет в Health Connect на телефоне.")
         }
     }
 

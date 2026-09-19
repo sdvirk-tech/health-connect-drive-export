@@ -4,16 +4,16 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.SystemClock
-import androidx.core.content.ContextCompat
 import androidx.concurrent.futures.await
+import androidx.core.content.ContextCompat
 import androidx.health.services.client.HealthServices
 import androidx.health.services.client.PassiveListenerService
 import androidx.health.services.client.data.DataPointContainer
 import androidx.health.services.client.data.DataType
-import androidx.health.services.client.data.DeltaDataType
-import androidx.health.services.client.data.IntervalDataPoint
+import androidx.health.services.client.data.HealthEvent
 import androidx.health.services.client.data.PassiveListenerConfig
-import androidx.health.services.client.data.SampleDataPoint
+import androidx.health.services.client.data.UserActivityInfo
+import androidx.health.services.client.data.UserActivityState
 import ru.sdvirk.healthsync.watch.WatchSample
 import ru.sdvirk.healthsync.watch.WatchSampleStore
 import ru.sdvirk.healthsync.watch.WatchSync
@@ -29,80 +29,72 @@ object WatchHealth {
 
     fun toSamples(container: DataPointContainer, boot: Instant = bootInstant()): List<WatchSample> {
         val out = ArrayList<WatchSample>()
-        container.getData(DataType.HEART_RATE_BPM).forEach { point ->
-            val bpm = point.value
-            if (bpm in 20.0..250.0) {
-                out += WatchSample(
-                    type = WatchSample.HEART_RATE,
-                    timeEpochMs = sampleInstant(point, boot).toEpochMilli(),
-                    value = bpm,
-                )
-            }
+        for (point in container.sampleDataPoints) {
+            val value = numberValue(point.value) ?: continue
+            val type = WatchSample.typeKey(point.dataType.name)
+            if (!accept(type, value)) continue
+            out += WatchSample(
+                type = type,
+                timeEpochMs = point.getTimeInstant(boot).toEpochMilli(),
+                value = value,
+            )
         }
-        container.getData(DataType.STEPS).forEach { point ->
-            val count = point.value.toDouble()
-            if (count >= 0) {
-                out += WatchSample(
-                    type = WatchSample.STEPS,
-                    timeEpochMs = intervalEndInstant(point, boot).toEpochMilli(),
-                    value = count,
-                )
-            }
+        for (point in container.intervalDataPoints) {
+            val value = numberValue(point.value) ?: continue
+            val type = WatchSample.typeKey(point.dataType.name)
+            if (!accept(type, value)) continue
+            out += WatchSample(
+                type = type,
+                timeEpochMs = point.getEndInstant(boot).toEpochMilli(),
+                value = value,
+                extra = "start=${point.getStartInstant(boot).toEpochMilli()}",
+            )
         }
-        appendOptionalSamples(container, boot, out)
+        for (point in container.cumulativeDataPoints) {
+            val value = numberValue(point.total) ?: continue
+            val type = WatchSample.typeKey(point.dataType.name)
+            if (!accept(type, value)) continue
+            out += WatchSample(
+                type = type,
+                timeEpochMs = point.end.toEpochMilli(),
+                value = value,
+                extra = "start=${point.start.toEpochMilli()};cumulative",
+            )
+        }
+        for (point in container.statisticalDataPoints) {
+            val avg = numberValue(point.average) ?: continue
+            val type = WatchSample.typeKey(point.dataType.name)
+            if (!accept(type, avg)) continue
+            out += WatchSample(
+                type = type,
+                timeEpochMs = point.end.toEpochMilli(),
+                value = avg,
+                value2 = numberValue(point.max),
+                extra = "min=${point.min};max=${point.max};start=${point.start.toEpochMilli()}",
+            )
+        }
         return out
     }
 
-    private fun appendOptionalSamples(
-        container: DataPointContainer,
-        boot: Instant,
-        out: MutableList<WatchSample>,
-    ) {
-        optionalSampleType("OXYGEN_SATURATION", WatchSample.SPO2, 50.0..100.0, container, boot, out)
-        optionalSampleType("HEART_RATE_VARIABILITY_RMSSD", WatchSample.HRV, 1.0..400.0, container, boot, out)
+    private fun numberValue(value: Any?): Double? = when (value) {
+        is Number -> value.toDouble()
+        else -> null
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun optionalSampleType(
-        field: String,
-        sampleType: String,
-        range: ClosedFloatingPointRange<Double>,
-        container: DataPointContainer,
-        boot: Instant,
-        out: MutableList<WatchSample>,
-    ) {
-        val dt = optionalDataType(field) as? DeltaDataType<Double, SampleDataPoint<Double>> ?: return
-        runCatching {
-            container.getData(dt).forEach { point ->
-                val v = point.value
-                if (v in range) {
-                    out += WatchSample(
-                        type = sampleType,
-                        timeEpochMs = sampleInstant(point, boot).toEpochMilli(),
-                        value = v,
-                    )
-                }
-            }
+    private fun accept(type: String, value: Double): Boolean {
+        if (!value.isFinite()) return false
+        return when (type) {
+            WatchSample.HEART_RATE -> value in 20.0..250.0
+            WatchSample.SPO2 -> value in 50.0..100.0
+            else -> value >= 0.0
         }
-    }
-
-    private fun optionalDataType(field: String): DataType<*, *>? = try {
-        DataType::class.java.getField(field).get(null) as DataType<*, *>
-    } catch (_: Exception) {
-        null
     }
 
     suspend fun supportedPassiveTypes(context: Context): Set<DataType<*, *>> {
         val caps = HealthServices.getClient(context).passiveMonitoringClient
             .getCapabilitiesAsync()
             .await()
-        val wanted = buildList {
-            add(DataType.HEART_RATE_BPM)
-            add(DataType.STEPS)
-            optionalDataType("OXYGEN_SATURATION")?.let { add(it) }
-            optionalDataType("HEART_RATE_VARIABILITY_RMSSD")?.let { add(it) }
-        }
-        return wanted.filter { it in caps.supportedDataTypesPassiveMonitoring }.toSet()
+        return caps.supportedDataTypesPassiveMonitoring
     }
 
     suspend fun capabilitiesReport(context: Context): String {
@@ -110,28 +102,40 @@ object WatchHealth {
             val caps = HealthServices.getClient(context).passiveMonitoringClient
                 .getCapabilitiesAsync()
                 .await()
-            val names = caps.supportedDataTypesPassiveMonitoring.map { it.toString() }.sorted()
-            "Health Services фон: " + if (names.isEmpty()) "пусто" else names.joinToString()
+            val names = caps.supportedDataTypesPassiveMonitoring.map { it.name }.sorted()
+            val events = caps.supportedHealthEventTypes.map { it.name }.sorted()
+            val states = caps.supportedUserActivityStates.map { it.name }.sorted()
+            buildString {
+                append("Health Services фон: ")
+                append(if (names.isEmpty()) "пусто" else names.joinToString())
+                append("\nСобытия: ")
+                append(if (events.isEmpty()) "нет" else events.joinToString())
+                append("\nАктивность: ")
+                append(if (states.isEmpty()) "нет" else states.joinToString())
+            }
         }.getOrElse { "Health Services: ${it.javaClass.simpleName} ${it.message ?: ""}" }
         val measure = runCatching {
             val caps = HealthServices.getClient(context).measureClient.getCapabilitiesAsync().await()
-            val names = caps.supportedDataTypesMeasure.map { it.toString() }.sorted()
+            val names = caps.supportedDataTypesMeasure.map { it.name }.sorted()
             "Health Services замер: " + if (names.isEmpty()) "пусто" else names.joinToString()
         }.getOrElse { "Замер: ${it.javaClass.simpleName}" }
         return "$hs\n$measure"
     }
 
     suspend fun registerPassive(context: Context): Set<DataType<*, *>> {
-        val types = supportedPassiveTypes(context)
+        val client = HealthServices.getClient(context).passiveMonitoringClient
+        val caps = client.getCapabilitiesAsync().await()
+        val types = caps.supportedDataTypesPassiveMonitoring
         if (types.isEmpty()) {
-            error("Health Services не отдаёт пульс/шаги на этих часах")
+            error("Health Services не отдаёт датчики на этих часах")
         }
+        val events = caps.supportedHealthEventTypes.filter { it != HealthEvent.Type.UNKNOWN }.toSet()
         val config = PassiveListenerConfig.builder()
             .setDataTypes(types)
+            .setShouldUserActivityInfoBeRequested(true)
+            .setHealthEventTypes(events)
             .build()
-        HealthServices.getClient(context).passiveMonitoringClient
-            .setPassiveListenerServiceAsync(HrPassiveService::class.java, config)
-            .await()
+        client.setPassiveListenerServiceAsync(HrPassiveService::class.java, config).await()
         context.getSharedPreferences(WatchSync.PREFS_WATCH, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(WatchSync.KEY_PASSIVE_ENABLED, true)
@@ -157,11 +161,50 @@ object WatchHealth {
         ContextCompat.checkSelfPermission(context, Manifest.permission.BODY_SENSORS) ==
             PackageManager.PERMISSION_GRANTED
 
-    private fun sampleInstant(point: SampleDataPoint<*>, boot: Instant): Instant =
-        boot.plus(point.timeDurationFromBoot)
+    fun onActivity(context: Context, info: UserActivityInfo) {
+        val samples = ArrayList<WatchSample>()
+        val t = info.stateChangeTime.toEpochMilli()
+        samples += WatchSample(
+            type = WatchSample.ACTIVITY,
+            timeEpochMs = t,
+            value = info.userActivityState.id.toDouble(),
+            extra = info.userActivityState.name,
+        )
+        val prefs = context.getSharedPreferences(WatchSync.PREFS_WATCH, Context.MODE_PRIVATE)
+        if (info.userActivityState == UserActivityState.USER_ACTIVITY_ASLEEP) {
+            if (prefs.getLong(WatchSync.KEY_ASLEEP_START_MS, 0L) == 0L) {
+                prefs.edit().putLong(WatchSync.KEY_ASLEEP_START_MS, t).apply()
+            }
+        } else {
+            val start = prefs.getLong(WatchSync.KEY_ASLEEP_START_MS, 0L)
+            if (start in 1 until t) {
+                samples += WatchSample(
+                    type = WatchSample.SLEEP,
+                    timeEpochMs = start,
+                    value = (t - start) / 60_000.0,
+                    value2 = t.toDouble(),
+                    extra = "activity_asleep",
+                )
+                prefs.edit().putLong(WatchSync.KEY_ASLEEP_START_MS, 0L).apply()
+            }
+        }
+        store(context).append(samples)
+        WatchPhoneSync.enqueue(context)
+    }
 
-    private fun intervalEndInstant(point: IntervalDataPoint<*>, boot: Instant): Instant =
-        boot.plus(point.endDurationFromBoot)
+    fun onHealthEvent(context: Context, event: HealthEvent) {
+        store(context).append(
+            listOf(
+                WatchSample(
+                    type = WatchSample.FALL,
+                    timeEpochMs = event.eventTime.toEpochMilli(),
+                    value = 1.0,
+                    extra = event.type.name,
+                )
+            ) + toSamples(event.metrics)
+        )
+        WatchPhoneSync.enqueue(context)
+    }
 }
 
 class HrPassiveService : PassiveListenerService() {
@@ -170,5 +213,13 @@ class HrPassiveService : PassiveListenerService() {
         if (samples.isEmpty()) return
         WatchHealth.store(this).append(samples)
         WatchPhoneSync.enqueue(this)
+    }
+
+    override fun onUserActivityInfoReceived(info: UserActivityInfo) {
+        WatchHealth.onActivity(this, info)
+    }
+
+    override fun onHealthEventReceived(event: HealthEvent) {
+        WatchHealth.onHealthEvent(this, event)
     }
 }

@@ -52,14 +52,12 @@ class WatchBtService : Service() {
         WatchBtNearby.start(this)
         WatchPhoneSync.schedule(this)
         scope.launch {
+            if (WatchHealth.hasBodySensors(this@WatchBtService)) {
+                runCatching { WatchHealth.registerPassive(this@WatchBtService) }
+            }
             while (isActive) {
                 WatchRfcomm.ensureConnected(this@WatchBtService)
                 WatchBtNearby.start(this@WatchBtService)
-                if (WatchHealth.hasBodySensors(this@WatchBtService) &&
-                    !WatchHealth.isPassiveEnabled(this@WatchBtService)
-                ) {
-                    runCatching { WatchHealth.registerPassive(this@WatchBtService) }
-                }
                 if (WatchRfcomm.isConnected()) {
                     WatchRfcomm.sendHeartbeat()
                 } else {

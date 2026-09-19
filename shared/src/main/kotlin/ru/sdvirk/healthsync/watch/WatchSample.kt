@@ -13,12 +13,41 @@ data class WatchSample(
         const val SPO2 = "spo2"
         const val HRV = "hrv_rmssd"
         const val STEPS = "steps"
+        const val STEPS_DAILY = "steps_daily"
         const val SLEEP = "sleep"
         const val BLOOD_PRESSURE = "blood_pressure"
         const val ECG = "ecg"
+        const val CALORIES = "calories"
+        const val CALORIES_DAILY = "calories_daily"
+        const val DISTANCE = "distance"
+        const val DISTANCE_DAILY = "distance_daily"
+        const val FLOORS = "floors"
+        const val FLOORS_DAILY = "floors_daily"
+        const val ELEVATION_GAIN = "elevation_gain"
+        const val ELEVATION_GAIN_DAILY = "elevation_gain_daily"
+        const val ACTIVITY = "activity"
+        const val FALL = "fall"
 
         const val SOURCE_SENSOR = "health_services"
         const val SOURCE_HC = "health_connect"
+
+        fun typeKey(healthServicesName: String): String {
+            val n = healthServicesName.trim().lowercase().replace('_', ' ')
+            return when (n) {
+                "heartrate", "heart rate" -> HEART_RATE
+                "steps" -> STEPS
+                "daily steps" -> STEPS_DAILY
+                "calories" -> CALORIES
+                "daily calories" -> CALORIES_DAILY
+                "distance" -> DISTANCE
+                "daily distance" -> DISTANCE_DAILY
+                "floors" -> FLOORS
+                "daily floors" -> FLOORS_DAILY
+                "elevation gain" -> ELEVATION_GAIN
+                "daily elevation gain" -> ELEVATION_GAIN_DAILY
+                else -> n.replace(Regex("[^a-z0-9]+"), "_").trim('_')
+            }
+        }
     }
 }
 
@@ -31,6 +60,7 @@ object WatchSync {
     const val PREFS_PHONE = "health_sync"
     const val KEY_SYNCED_THROUGH_MS = "synced_through_ms"
     const val KEY_PASSIVE_ENABLED = "passive_enabled"
+    const val KEY_ASLEEP_START_MS = "asleep_start_ms"
     const val KEY_LAST_WATCH_MSG_MS = "last_watch_msg_ms"
     const val KEY_LAST_WATCH_DIAG = "last_watch_diag"
     const val KEY_LAST_WATCH_DIAG_MS = "last_watch_diag_ms"
