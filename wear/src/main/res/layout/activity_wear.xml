@@ -64,6 +64,12 @@
                 android:text="Почему пусто" />
 
             <Button
+                android:id="@+id/send_log"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Лог на телефон" />
+
+            <Button
                 android:id="@+id/sync"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

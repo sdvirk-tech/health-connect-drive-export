@@ -17,7 +17,11 @@ object JsonExporter {
 
     private val iso = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
-    fun writeZip(snapshot: HealthSnapshot, outFile: File): File {
+    fun writeZip(
+        snapshot: HealthSnapshot,
+        outFile: File,
+        extras: Map<String, ByteArray> = emptyMap(),
+    ): File {
         outFile.parentFile?.mkdirs()
         ZipOutputStream(outFile.outputStream().buffered()).use { zos ->
             zos.putNextEntry(ZipEntry("health_export.json"))
@@ -26,6 +30,11 @@ object JsonExporter {
             zos.putNextEntry(ZipEntry("summary.txt"))
             zos.write(snapshot.summaryLines().joinToString("\n").toByteArray(Charsets.UTF_8))
             zos.closeEntry()
+            extras.forEach { (name, bytes) ->
+                zos.putNextEntry(ZipEntry(name))
+                zos.write(bytes)
+                zos.closeEntry()
+            }
         }
         return outFile
     }

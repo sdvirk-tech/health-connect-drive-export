@@ -50,6 +50,20 @@ object WatchPhoneSync {
         return pending.size
     }
 
+    suspend fun sendDiag(context: Context, text: String) {
+        val app = context.applicationContext
+        val node = findPhone(app)
+            ?: error(lastLinkDetail ?: "Телефон не рядом. Открой Health Sync на телефоне.")
+        var bytes = text.toByteArray(Charsets.UTF_8)
+        if (bytes.size > WatchSync.MAX_DIAG_BYTES) {
+            bytes = text.take(WatchSync.MAX_DIAG_BYTES / 2).toByteArray(Charsets.UTF_8)
+        }
+        val code = Wearable.getMessageClient(app)
+            .sendMessage(node.id, WatchSync.PATH_DIAG, bytes)
+            .awaitTask()
+        if (code < 0) error("Wear Data Layer не принял лог")
+    }
+
     suspend fun linkStatus(context: Context): String {
         findPhone(context.applicationContext)
         return lastLinkDetail ?: "телефон не найден"
@@ -74,7 +88,7 @@ object WatchPhoneSync {
         lastLinkDetail = if (picked == null) {
             "телефон не найден (capability=${capNodes.size}, connected=${connected.size}). Открой Health Sync на телефоне, Bluetooth вкл."
         } else if (capNodes.none { it.id == picked.id }) {
-            "телефон ${picked.displayName} без capability healthsync_phone — поставь Health Sync 0.3.1 на телефон"
+            "телефон ${picked.displayName} без capability healthsync_phone — поставь Health Sync 0.3.2 на телефон"
         } else {
             "телефон ${picked.displayName}" + if (picked.nearby) " рядом" else ""
         }

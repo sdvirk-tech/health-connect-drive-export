@@ -10,6 +10,7 @@ import com.google.android.gms.wearable.Wearable
 import ru.sdvirk.healthsync.watch.WatchSample
 import ru.sdvirk.healthsync.watch.WatchSampleStore
 import ru.sdvirk.healthsync.watch.WatchSync
+import ru.sdvirk.healthsync.wear.WatchDiagStore
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
@@ -87,6 +88,8 @@ object DataProbe {
         }
 
         lines += watchLinkLine(context)
+
+        WatchDiagStore.asProbeLines(context).forEach { lines += it }
 
         val store = WatchSampleStore.at(context.filesDir)
         val byType = store.countsByType()

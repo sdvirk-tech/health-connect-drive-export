@@ -5,7 +5,10 @@
     <string name="tip_samsung">Разрешения Health Sync только ЧИТАЮТ Health Connect. Галочки в Health Connect ≠ данные. Нужно: Samsung Health → Настройки → Health Connect → включить запись; в Health Connect у Samsung Health тоже все типы как у источника. Без «доступа к прошлым данным» новое приложение видит 0. Давление/ЭКГ — Samsung Health Monitor.</string>
     <string name="open_health_connect">Открыть Health Connect</string>
     <string name="open_samsung_health">Открыть Samsung Health</string>
-    <string name="tip_watch">На часах Health Sync Watch: «Разрешения», фон датчики, «Замерить пульс», «HC: сон/SpO2/BP/HRV», «На телефон». Wear-APK только на часы. ЭКГ Health Services/HC не отдают.</string>
+    <string name="tip_watch">На часах Health Sync Watch: «Разрешения», фон, «Замерить пульс», «HC: сон/SpO2/BP/HRV», «Почему пусто» или «Лог на телефон» — лог появится здесь. Wear-APK только на часы. ЭКГ Health Services/HC не отдают.</string>
+    <string name="watch_log_copy">Показать лог часов</string>
+    <string name="watch_log_empty">Лога с часов ещё нет. На часах нажми «Лог на телефон».</string>
+    <string name="watch_log_copied">Лог часов скопирован</string>
     <string name="choose_folder">Папка для zip</string>
     <string name="folder_saved">Папка сохранена. Выгрузка скопирует zip туда.</string>
     <string name="status_folder_copied">Zip скопирован в выбранную папку</string>

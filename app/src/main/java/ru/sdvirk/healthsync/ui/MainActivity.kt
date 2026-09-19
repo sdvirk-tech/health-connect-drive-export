@@ -1,5 +1,7 @@
 package ru.sdvirk.healthsync.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -18,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -43,6 +48,7 @@ import ru.sdvirk.healthsync.export.withWatchSamples
 import ru.sdvirk.healthsync.health.DataProbe
 import ru.sdvirk.healthsync.health.HcSettings
 import ru.sdvirk.healthsync.health.HealthConnectReader
+import ru.sdvirk.healthsync.wear.WatchDiagStore
 import ru.sdvirk.healthsync.worker.DailyExportWorker
 import java.io.File
 import java.time.Instant
@@ -91,13 +97,21 @@ class MainActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize()) {
                     val scope = rememberCoroutineScope()
                     var status by remember { mutableStateOf(initialStatus()) }
+                    var resumeTick by remember { mutableStateOf(0) }
                     var uploadUrl by remember {
                         mutableStateOf(prefs.getString(DailyExportWorker.KEY_UPLOAD_URL, "") ?: "")
                     }
                     var secret by remember {
                         mutableStateOf(prefs.getString(DailyExportWorker.KEY_SECRET, "") ?: "")
                     }
-                    LaunchedEffect(Unit) {
+                    DisposableEffect(Unit) {
+                        val obs = LifecycleEventObserver { _, event ->
+                            if (event == Lifecycle.Event.ON_RESUME) resumeTick++
+                        }
+                        lifecycle.addObserver(obs)
+                        onDispose { lifecycle.removeObserver(obs) }
+                    }
+                    LaunchedEffect(resumeTick) {
                         status = withContext(Dispatchers.IO) {
                             DataProbe.run(this@MainActivity, reader).asText()
                         }
@@ -183,6 +197,29 @@ class MainActivity : ComponentActivity() {
 
                         Button(
                             onClick = {
+                                val log = WatchDiagStore.last(this@MainActivity)
+                                if (log.isBlank()) {
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        getString(R.string.watch_log_empty),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                                    cm.setPrimaryClip(ClipData.newPlainText("Health Sync watch log", log))
+                                    status = log
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        getString(R.string.watch_log_copied),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(stringResource(R.string.watch_log_copy)) }
+
+                        Button(
+                            onClick = {
                                 scope.launch {
                                     status = getString(R.string.status_reading)
                                     val sdk = reader.availability()
@@ -196,7 +233,11 @@ class MainActivity : ComponentActivity() {
                                         val snap = reader.readSince(start, end).withWatchSamples(this@MainActivity)
                                         val fileName = ExportFileNames.zipName()
                                         val out = File(cacheDir, fileName)
-                                        JsonExporter.writeZip(snap, out)
+                                        val extras = WatchDiagStore.last(this@MainActivity)
+                                            .takeIf { it.isNotBlank() }
+                                            ?.let { mapOf("watch_diag.txt" to it.toByteArray(Charsets.UTF_8)) }
+                                            ?: emptyMap()
+                                        JsonExporter.writeZip(snap, out, extras)
                                         var text = snap.summaryLines().joinToString(" · ")
                                         val tree = prefs.getString(DailyExportWorker.KEY_EXPORT_TREE, "") ?: ""
                                         if (tree.isNotBlank()) {

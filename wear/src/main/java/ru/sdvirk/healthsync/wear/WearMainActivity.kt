@@ -104,7 +104,10 @@ class WearMainActivity : ComponentActivity() {
         }
         findViewById<Button>(R.id.measure).setOnClickListener { startMeasure() }
         findViewById<Button>(R.id.diagnose).setOnClickListener {
-            lifecycleScope.launch { status.text = diagnose() }
+            lifecycleScope.launch { showAndSendDiag() }
+        }
+        findViewById<Button>(R.id.send_log).setOnClickListener {
+            lifecycleScope.launch { showAndSendDiag() }
         }
         findViewById<Button>(R.id.sync).setOnClickListener {
             lifecycleScope.launch {
@@ -150,26 +153,66 @@ class WearMainActivity : ComponentActivity() {
         }
     }
 
+    private suspend fun showAndSendDiag() {
+        status.text = "Собираю лог…"
+        val log = try {
+            diagnose()
+        } catch (e: Exception) {
+            "diagnose failed: ${e.javaClass.simpleName} ${e.message ?: ""}"
+        }
+        status.text = log
+        try {
+            withContext(Dispatchers.IO) { WatchPhoneSync.sendDiag(this@WearMainActivity, log) }
+            status.text = log + "\n\nЛог отправлен на телефон. Открой Health Sync → лог часов."
+        } catch (e: Exception) {
+            status.text = log + "\n\nНе ушло: ${e.message ?: e.javaClass.simpleName}\nОткрой Health Sync на телефоне, Bluetooth вкл, снова «Лог на телефон»."
+        }
+    }
+
     private suspend fun diagnose(): String {
         val counts = WatchHealth.store(this).countsByType()
         val hs = WatchHealth.capabilitiesReport(this)
         val hcSdk = WatchHealthConnect.availability(this)
         val hcClient = WatchHealthConnect.client(this)
-        val hcGranted = hcClient?.permissionController?.getGrantedPermissions()?.size ?: 0
+        val granted = hcClient?.permissionController?.getGrantedPermissions().orEmpty()
+        val version = runCatching {
+            packageManager.getPackageInfo(packageName, 0).versionName
+        }.getOrNull() ?: "?"
+        val lastHr = WatchHealth.store(this).lastHeartRate()
+        val hcPull = if (hcClient != null) {
+            runCatching {
+                val (samples, note) = WatchHealthConnect.pull(this, days = 7)
+                if (samples.isNotEmpty()) WatchHealth.store(this).append(samples)
+                "HC pull: проб ${samples.size}\n$note"
+            }.getOrElse { "HC pull: ${it.javaClass.simpleName} ${it.message ?: ""}" }
+        } else {
+            "HC pull: нет клиента"
+        }
         return buildString {
+            appendLine("Health Sync Watch $version sdk=${Build.VERSION.SDK_INT} ${Build.MODEL}")
             appendLine(hs)
             val hcLine = if (hcSdk == SDK_AVAILABLE) {
-                "Health Connect: есть, разрешений $hcGranted/${WatchHealthConnect.permissions.size}"
+                "Health Connect: есть, разрешений ${granted.size}/${WatchHealthConnect.permissions.size}"
             } else {
                 "Health Connect: " + WatchHealthConnect.hcUnavailable(hcSdk)
             }
             appendLine(hcLine)
+            if (granted.isNotEmpty()) {
+                appendLine("HC выдано: " + granted.joinToString { it.substringAfterLast('.') })
+            }
+            val missing = WatchHealthConnect.permissions - granted
+            if (missing.isNotEmpty()) {
+                appendLine("HC нет: " + missing.joinToString { it.substringAfterLast('.') })
+            }
+            appendLine(hcPull)
             appendLine("Локально: $counts")
+            appendLine("Последний пульс: " + (lastHr?.let { "${it.value.toInt()} bpm t=${it.timeEpochMs}" } ?: "нет"))
+            appendLine("Фон датчики: " + if (WatchHealth.isPassiveEnabled(this@WearMainActivity)) "вкл" else "выкл")
+            appendLine("Датчики тела: " + if (hasBodySensors()) "OK" else "нет")
             appendLine("Связь: " + withContext(Dispatchers.IO) { WatchPhoneSync.linkStatus(this@WearMainActivity) })
             appendLine("Пульс: датчик часов (Health Services). Надень часы, «Замерить пульс» или фон.")
             appendLine("HRV/сон/SpO2/давление: Samsung Health должен ПИСАТЬ в Health Connect, затем «HC: сон/SpO2/BP/HRV».")
-            appendLine("ЭКГ: Samsung Health Monitor, в Health Connect обычно нет. Health Services ЭКГ не отдаёт.")
-            appendLine("Потом «На телефон» — пробы уходят в Health Sync на телефоне и в zip.")
+            appendLine("ЭКГ: Samsung Health Monitor, в Health Connect обычно нет.")
         }
     }
 

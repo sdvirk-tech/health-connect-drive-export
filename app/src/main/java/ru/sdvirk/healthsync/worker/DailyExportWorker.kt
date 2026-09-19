@@ -12,6 +12,7 @@ import ru.sdvirk.healthsync.export.FolderExport
 import ru.sdvirk.healthsync.export.JsonExporter
 import ru.sdvirk.healthsync.export.withWatchSamples
 import ru.sdvirk.healthsync.health.HealthConnectReader
+import ru.sdvirk.healthsync.wear.WatchDiagStore
 import java.io.File
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -41,7 +42,11 @@ class DailyExportWorker(
 
         val fileName = ExportFileNames.zipName()
         val out = File(applicationContext.cacheDir, fileName)
-        JsonExporter.writeZip(snapshot, out)
+        val extras = WatchDiagStore.last(applicationContext)
+            .takeIf { it.isNotBlank() }
+            ?.let { mapOf("watch_diag.txt" to it.toByteArray(Charsets.UTF_8)) }
+            ?: emptyMap()
+        JsonExporter.writeZip(snapshot, out, extras)
 
         var copied = false
         if (tree.isNotBlank()) {
