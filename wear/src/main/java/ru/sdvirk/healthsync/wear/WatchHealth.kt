@@ -112,7 +112,7 @@ object WatchHealth {
         }.getOrElse { "Health Services: ${it.javaClass.simpleName} ${it.message ?: ""}" }
         val measure = runCatching {
             val caps = HealthServices.getClient(context).measureClient.getCapabilitiesAsync().await()
-            val names = caps.supportedDataTypes.map { it.toString() }.sorted()
+            val names = caps.supportedDataTypesMeasure.map { it.toString() }.sorted()
             "Health Services замер: " + if (names.isEmpty()) "пусто" else names.joinToString()
         }.getOrElse { "Замер: ${it.javaClass.simpleName}" }
         return "$hs\n$measure"

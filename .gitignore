@@ -10,6 +10,7 @@ app/src/main/res/values/drive_folder.xml
 /wear/build
 /shared/build
 *.apk
+!dist/*.apk
 *.aab
 .DS_Store
 captures/
