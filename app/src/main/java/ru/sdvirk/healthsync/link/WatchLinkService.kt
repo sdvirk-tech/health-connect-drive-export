@@ -36,7 +36,10 @@ class WatchLinkService : Service() {
             startForeground(NOTIF_ID, notification)
         }
         http = PhoneLogServer(
-            onDiag = { WatchDiagStore.save(this, it) },
+            onDiag = {
+                WatchDiagStore.save(this, it)
+                updateLinkNotification("Лог часов получен. Открой Health Sync → Показать лог часов.")
+            },
             onSamples = { json ->
                 val samples = WatchSyncCodec.decodeMessage(json)
                 if (samples.isEmpty()) return@PhoneLogServer
@@ -47,9 +50,17 @@ class WatchLinkService : Service() {
                     .edit()
                     .putLong(WatchSync.KEY_LAST_WATCH_MSG_MS, System.currentTimeMillis())
                     .apply()
+                updateLinkNotification("Пробы с часов: ${samples.size}")
+            },
+            onReady = { ok ->
+                val ip = PhoneLogServer.localIpv4() ?: "…"
+                updateLinkNotification(
+                    if (ok) "Wi-Fi $ip:${WatchSync.LAN_HTTP_PORT}. Не закрывайте приложение."
+                    else "Порт ${WatchSync.LAN_HTTP_PORT} не открылся. Перезапусти Health Sync.",
+                )
             },
         ).also { it.start() }
-        udp = PhoneUdpResponder().also { it.start() }
+        udp = PhoneUdpResponder(this).also { it.start() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -68,6 +79,11 @@ class WatchLinkService : Service() {
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL, "Связь с часами", NotificationManager.IMPORTANCE_LOW)
         )
+    }
+
+    private fun updateLinkNotification(text: String) {
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.notify(NOTIF_ID, buildNotification(text))
     }
 
     private fun buildNotification(text: String): Notification {

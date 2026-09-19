@@ -1,15 +1,17 @@
 package ru.sdvirk.healthsync.link
 
 import android.util.Log
+import ru.sdvirk.healthsync.watch.LanAddresses
+import ru.sdvirk.healthsync.watch.LanLink
 import ru.sdvirk.healthsync.watch.WatchSync
-import java.net.Inet4Address
-import java.net.NetworkInterface
+import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.util.concurrent.atomic.AtomicBoolean
 
 class PhoneLogServer(
     private val onDiag: (String) -> Unit,
     private val onSamples: (String) -> Unit,
+    private val onReady: (Boolean) -> Unit = {},
 ) {
     private val running = AtomicBoolean(false)
     private var server: ServerSocket? = null
@@ -21,8 +23,9 @@ class PhoneLogServer(
             try {
                 ServerSocket().use { ss ->
                     ss.reuseAddress = true
-                    ss.bind(java.net.InetSocketAddress(WatchSync.LAN_HTTP_PORT))
+                    ss.bind(InetSocketAddress("0.0.0.0", WatchSync.LAN_HTTP_PORT))
                     server = ss
+                    onReady(true)
                     while (running.get()) {
                         val socket = try {
                             ss.accept()
@@ -35,7 +38,10 @@ class PhoneLogServer(
                                 val req = MiniHttp.readRequest(s)
                                 when {
                                     req.method == "GET" && req.path.startsWith("/ping") ->
-                                        MiniHttp.writeOk(s, "pong")
+                                        MiniHttp.writeOk(
+                                            s,
+                                            "pong ${LanLink.encodeBeacon(LanAddresses.preferredIpv4() ?: "0.0.0.0")}",
+                                        )
                                     req.method == "POST" && req.path.startsWith("/diag") -> {
                                         onDiag(req.body.toString(Charsets.UTF_8))
                                         MiniHttp.writeOk(s, "diag-ok")
@@ -54,6 +60,7 @@ class PhoneLogServer(
                 }
             } catch (e: Exception) {
                 Log.w("PhoneLogServer", e)
+                onReady(false)
             } finally {
                 running.set(false)
             }
@@ -71,17 +78,6 @@ class PhoneLogServer(
     }
 
     companion object {
-        fun localIpv4(): String? {
-            val ifaces = NetworkInterface.getNetworkInterfaces() ?: return null
-            for (nif in ifaces) {
-                if (!nif.isUp || nif.isLoopback) continue
-                for (addr in nif.inetAddresses) {
-                    if (addr is Inet4Address && !addr.isLoopbackAddress) {
-                        return addr.hostAddress
-                    }
-                }
-            }
-            return null
-        }
+        fun localIpv4(): String? = LanAddresses.preferredIpv4()
     }
 }

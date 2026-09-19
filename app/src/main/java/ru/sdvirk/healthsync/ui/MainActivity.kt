@@ -52,11 +52,13 @@ import ru.sdvirk.healthsync.health.HcSettings
 import ru.sdvirk.healthsync.health.HealthConnectReader
 import ru.sdvirk.healthsync.link.PhoneLogServer
 import ru.sdvirk.healthsync.link.WatchLinkService
+import ru.sdvirk.healthsync.watch.LanAddresses
 import ru.sdvirk.healthsync.wear.WatchDiagStore
 import ru.sdvirk.healthsync.worker.DailyExportWorker
 import java.io.File
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
 
@@ -99,10 +101,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         reader = HealthConnectReader(this)
         val prefs = getSharedPreferences(DailyExportWorker.PREFS, MODE_PRIVATE)
+        WatchLinkService.start(this)
         if (Build.VERSION.SDK_INT >= 33) {
             requestNotify.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            WatchLinkService.start(this)
         }
 
         setContent {
@@ -129,6 +130,17 @@ class MainActivity : ComponentActivity() {
                             DataProbe.run(this@MainActivity, reader).asText()
                         }
                     }
+                    LaunchedEffect(Unit) {
+                        var seen = WatchDiagStore.lastMs(this@MainActivity)
+                        while (true) {
+                            delay(1500)
+                            val ms = WatchDiagStore.lastMs(this@MainActivity)
+                            if (ms > 0L && ms != seen) {
+                                seen = ms
+                                status = WatchDiagStore.last(this@MainActivity)
+                            }
+                        }
+                    }
 
                     Column(
                         Modifier
@@ -139,7 +151,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Text("Health Sync → Drive", style = MaterialTheme.typography.headlineSmall)
                         Text(
-                            "Wi-Fi приём с часов: ${PhoneLogServer.localIpv4() ?: "нет IPv4"}:8765. Не закрывайте Health Sync — сверните, не смахивайте.",
+                            "Wi-Fi приём с часов: ${PhoneLogServer.localIpv4() ?: "нет IPv4"}:8765 (${LanAddresses.allIpv4Summary()}). Не закрывайте Health Sync — сверните, не смахивайте.",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(stringResource(R.string.intro))
@@ -181,7 +193,7 @@ class MainActivity : ComponentActivity() {
                             onClick = {
                                 val opened = HcSettings.openHealthConnect(this@MainActivity)
                                 if (!opened) {
-                                    requestPermissions.launch(reader.permissions)
+                                    status = getString(R.string.hc_no_app)
                                     Toast.makeText(
                                         this@MainActivity,
                                         getString(R.string.hc_no_app),

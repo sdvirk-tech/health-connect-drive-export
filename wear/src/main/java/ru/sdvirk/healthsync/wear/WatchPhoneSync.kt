@@ -38,7 +38,7 @@ object WatchPhoneSync {
         val errors = ArrayList<String>()
         val json = WatchSyncCodec.encodeMessage(pending)
         val lan = runCatching {
-            val (ip, port) = resolveLan(app)
+            val (ip, port) = WatchLanClient.findPhoneHttp(app)
             WatchLanClient.post(ip, port, "/samples", json)
             ip
         }
@@ -74,7 +74,7 @@ object WatchPhoneSync {
         }
         val errors = ArrayList<String>()
         val lan = runCatching {
-            val (ip, port) = resolveLan(app)
+            val (ip, port) = WatchLanClient.findPhoneHttp(app)
             WatchLanClient.post(ip, port, "/diag", payload)
             "Wi-Fi $ip:$port"
         }
@@ -109,20 +109,6 @@ object WatchPhoneSync {
         store.pruneOlderThan(System.currentTimeMillis() - 90L * 24 * 60 * 60 * 1000)
     }
 
-    private fun resolveLan(context: Context): Pair<String, Int> {
-        val prefs = context.getSharedPreferences(WatchSync.PREFS_WATCH, Context.MODE_PRIVATE)
-        val found = WatchLanClient.discover()
-        if (found != null) {
-            prefs.edit().putString(WatchSync.KEY_LAST_LAN_IP, found.first).apply()
-            return found
-        }
-        val last = prefs.getString(WatchSync.KEY_LAST_LAN_IP, null)
-        if (!last.isNullOrBlank() && WatchLanClient.ping(last, WatchSync.LAN_HTTP_PORT)) {
-            return last to WatchSync.LAN_HTTP_PORT
-        }
-        error("телефон не ответил по Wi-Fi. Health Sync на телефоне должен быть открыт, одна сеть.")
-    }
-
     suspend fun linkStatus(context: Context): String {
         findPhone(context.applicationContext)
         return lastLinkDetail ?: "телефон не найден"
@@ -147,7 +133,7 @@ object WatchPhoneSync {
         lastLinkDetail = if (picked == null) {
             "телефон не найден (capability=${capNodes.size}, connected=${connected.size}). Открой Health Sync на телефоне, Bluetooth вкл."
         } else if (capNodes.none { it.id == picked.id }) {
-            "телефон ${picked.displayName} без capability healthsync_phone — поставь Health Sync 0.3.3 на телефон"
+            "телефон ${picked.displayName} без capability healthsync_phone — поставь Health Sync 0.3.4 на телефон"
         } else {
             "телефон ${picked.displayName}" + if (picked.nearby) " рядом" else ""
         }

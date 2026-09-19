@@ -25,7 +25,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ru.sdvirk.healthsync.watch.LanAddresses
 import ru.sdvirk.healthsync.watch.WatchSample
+import ru.sdvirk.healthsync.watch.WatchSync
 import java.util.concurrent.atomic.AtomicInteger
 
 class WearMainActivity : ComponentActivity() {
@@ -209,7 +211,11 @@ class WearMainActivity : ComponentActivity() {
             appendLine("Последний пульс: " + (lastHr?.let { "${it.value.toInt()} bpm t=${it.timeEpochMs}" } ?: "нет"))
             appendLine("Фон датчики: " + if (WatchHealth.isPassiveEnabled(this@WearMainActivity)) "вкл" else "выкл")
             appendLine("Датчики тела: " + if (hasBodySensors()) "OK" else "нет")
-            appendLine("Связь: " + withContext(Dispatchers.IO) { WatchPhoneSync.linkStatus(this@WearMainActivity) })
+            appendLine("Wi-Fi часов: " + LanAddresses.allIpv4Summary())
+            val lastLan = getSharedPreferences(WatchSync.PREFS_WATCH, MODE_PRIVATE)
+                .getString(WatchSync.KEY_LAST_LAN_IP, null)
+            appendLine("Последний IP телефона: " + (lastLan ?: "ещё не находили"))
+            appendLine("Связь Data Layer: " + withContext(Dispatchers.IO) { WatchPhoneSync.linkStatus(this@WearMainActivity) })
             appendLine("Пульс: датчик часов (Health Services). Надень часы, «Замерить пульс» или фон.")
             appendLine("HRV/сон/SpO2/давление: Samsung Health должен ПИСАТЬ в Health Connect, затем «HC: сон/SpO2/BP/HRV».")
             appendLine("ЭКГ: Samsung Health Monitor, в Health Connect обычно нет.")

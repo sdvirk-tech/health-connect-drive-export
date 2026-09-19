@@ -36,7 +36,7 @@ git pull
 
 ### Только часы (готовая APK, без Gradle)
 
-Сборку не запускает. Ставит `dist\HealthSync-wear-0.3.0-debug.apk` **только на Galaxy Watch**.
+Сборку не запускает. Ставит `dist\HealthSync-wear-0.3.4-debug.apk` **только на Galaxy Watch**.
 
 1. На часах: параметры разработчика → **Беспроводная отладка** вкл.
 2. На главном экране отладки скопируй **IP:порт подключения** (у тебя уже было `192.168.2.142:44643`).
@@ -48,7 +48,7 @@ cd C:\IT\Cursor\health-connect-drive-export
 git fetch origin
 git checkout cursor/watch-vitals-export-8125
 dir install-watch.cmd
-.\install-watch.cmd -Apk C:\IT\Cursor\HealthWear\HealthSync-wear-0.3.0-debug.apk -Watch 192.168.2.142:44643
+.\install-watch.cmd -Apk dist\HealthSync-wear-0.3.4-debug.apk -Watch 192.168.2.142:44643
 ```
 
 Если часы ещё не paired, добавь `-Pair 192.168.2.142:37111 -PairCode 847291` (цифры с экрана сопряжения, не слова).

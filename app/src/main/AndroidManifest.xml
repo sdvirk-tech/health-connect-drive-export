@@ -33,7 +33,7 @@
             <action android:name="androidx.health.ACTION_HEALTH_CONNECT_SETTINGS" />
         </intent>
         <intent>
-            <action android:name="android.settings.HEALTH_CONNECT_SETTINGS" />
+            <action android:name="android.health.connect.action.MANAGE_HEALTH_PERMISSIONS" />
         </intent>
     </queries>
 
